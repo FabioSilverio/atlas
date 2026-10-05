@@ -1,0 +1,81 @@
+{
+  "_doc": "Correções manuais sobre o que vem do Wikidata/Herre. Toda entrada exige justification, source_url e verified_at. Campos aceitos: chief_executive_role (head_of_state | head_of_government), head_of_state / head_of_government ({qid, name}), party_qids (partidos do chefe do executivo).",
+  "PRT": {
+    "chief_executive_role": "head_of_government",
+    "justification": "Semipresidencialismo premier-presidencial: o Governo, chefiado pelo primeiro-ministro, é o órgão de condução da política geral do país (Constituição, art. 182).",
+    "source_url": "https://www.parlamento.pt/Legislacao/Paginas/ConstituicaoRepublicaPortuguesa.aspx",
+    "verified_at": "2026-10-05"
+  },
+  "POL": {
+    "chief_executive_role": "head_of_government",
+    "justification": "O Conselho de Ministros, presidido pelo primeiro-ministro, conduz a política interna e externa (Constituição, art. 146).",
+    "source_url": "https://www.sejm.gov.pl/prawo/konst/angielski/kon1.htm",
+    "verified_at": "2026-10-05"
+  },
+  "LTU": {
+    "chief_executive_role": "head_of_government",
+    "justification": "O governo é formado e chefiado pelo primeiro-ministro com confiança do Seimas; o presidente tem papel forte só em política externa. Ideologia do executivo medida pelo partido do premiê.",
+    "source_url": "https://www.lrs.lt/home/Konstitucija/Constitution.htm",
+    "verified_at": "2026-10-05"
+  },
+  "ROU": {
+    "chief_executive_role": "head_of_government",
+    "justification": "O governo, chefiado pelo primeiro-ministro e responsável perante o Parlamento, conduz a política interna e externa (Constituição, art. 102).",
+    "source_url": "https://www.presidency.ro/en/the-constitution-of-romania",
+    "verified_at": "2026-10-05"
+  },
+  "MNG": {
+    "chief_executive_role": "head_of_government",
+    "justification": "Desde a reforma constitucional de 2019 o primeiro-ministro chefia o executivo; o presidente tem mandato único e poderes limitados.",
+    "source_url": "https://www.legalinfo.mn/",
+    "verified_at": "2026-10-05"
+  },
+  "TLS": {
+    "chief_executive_role": "head_of_government",
+    "justification": "Semipresidencialismo em que o governo, chefiado pelo primeiro-ministro, conduz a política geral (Constituição, art. 103).",
+    "source_url": "https://www.timor-leste.gov.tl/",
+    "verified_at": "2026-10-05"
+  },
+  "BIH": {
+    "chief_executive_role": "head_of_government",
+    "justification": "A presidência é colegiada e tripartite; usamos o presidente do Conselho de Ministros como chefe do executivo federal.",
+    "source_url": "https://www.vijeceministara.gov.ba/",
+    "verified_at": "2026-10-05"
+  },
+  "LBN": {
+    "chief_executive_role": "head_of_government",
+    "justification": "Pelo Acordo de Taif (1989) o poder executivo foi transferido ao Conselho de Ministros, presidido pelo primeiro-ministro.",
+    "source_url": "https://www.presidency.gov.lb/",
+    "verified_at": "2026-10-05"
+  },
+  "TWN": {
+    "chief_executive_role": "head_of_state",
+    "justification": "O presidente nomeia o premiê sem confirmação legislativa e dirige o executivo.",
+    "source_url": "https://english.president.gov.tw/",
+    "verified_at": "2026-10-05"
+  },
+  "LKA": {
+    "chief_executive_role": "head_of_state",
+    "justification": "Presidência executiva: o presidente é chefe de Estado, de governo e do gabinete (Constituição, art. 30 e 43).",
+    "source_url": "https://www.parliament.lk/files/pdf/constitution.pdf",
+    "verified_at": "2026-10-05"
+  },
+  "IRN": {
+    "chief_executive_role": "head_of_state",
+    "justification": "O Líder Supremo detém a autoridade final sobre as políticas gerais do Estado (Constituição, art. 110); o presidente chefia o governo abaixo dele.",
+    "source_url": "https://www.constituteproject.org/constitution/Iran_1989",
+    "verified_at": "2026-10-05"
+  },
+  "VAT": {
+    "chief_executive_role": "head_of_state",
+    "justification": "Monarquia eletiva absoluta: o papa detém os poderes legislativo, executivo e judiciário (Lei Fundamental do Estado da Cidade do Vaticano, art. 1); o presidente do Governatorato age por delegação.",
+    "source_url": "https://www.vatican.va/content/francesco/it/apost_letters/documents/20230513-lettera-ap-legge-fondamentale-scv.html",
+    "verified_at": "2026-10-05"
+  },
+  "MCO": {
+    "chief_executive_role": "head_of_state",
+    "justification": "O poder executivo pertence à alta autoridade do príncipe soberano; o ministro de Estado governa sob sua autoridade (Constituição de 1962, art. 3).",
+    "source_url": "https://www.gouv.mc/Gouvernement-et-Institutions/Les-Institutions/La-Constitution-de-la-Principaute",
+    "verified_at": "2026-10-05"
+  }
+}

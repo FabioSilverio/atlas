@@ -1,0 +1,45 @@
+{
+  "_doc": "Ligações manuais quando o casamento automático (artigo da Wikipédia em inglês ou nome + país) falha. Chave = QID do partido no Wikidata. Campos: partyfacts_id (null = ausente do Party Facts) e, opcionalmente, ids diretos nas bases (ches_id, gps_id, parlgov_id) quando o Party Facts ainda não tem a ligação. note é obrigatório.",
+  "Q23731823": {
+    "partyfacts_id": 5857,
+    "note": "Renaissance = La République En Marche! renomeado em 2022; Party Facts registra como LaREM/RE."
+  },
+  "Q684886": {
+    "partyfacts_id": 808,
+    "note": "Partido Trabalhista de Malta; Party Facts usa o artigo 'Malta_Labour_Party'."
+  },
+  "Q799577": {
+    "partyfacts_id": 2384,
+    "note": "Pakistan Muslim League (N); diferença só na codificação do artigo da Wikipédia."
+  },
+  "Q17427": {
+    "partyfacts_id": 5124,
+    "note": "Partido Comunista da China; Party Facts usa o título antigo 'Communist_Party_of_China'."
+  },
+  "Q1472820": {
+    "partyfacts_id": 4214,
+    "note": "Fuerza Popular = Fuerza 2011 renomeado em 2012."
+  },
+  "Q56274977": {
+    "partyfacts_id": 7911,
+    "note": "Movimiento Semilla (Guatemala)."
+  },
+  "Q111077075": {
+    "partyfacts_id": 3748,
+    "note": "Amanat = Nur Otan renomeado em 2022."
+  },
+  "Q2007531": {
+    "partyfacts_id": 5195,
+    "note": "Pangu Party (Papua-Nova Guiné)."
+  },
+  "Q125418097": {
+    "partyfacts_id": null,
+    "ches_id": 2318,
+    "note": "Tisza (Tisztelet és Szabadság Párt) está no CHES 2024 (id 2318) mas ainda não no Party Facts."
+  },
+  "Q1021144": {
+    "partyfacts_id": 9122,
+    "ches_id": 2603,
+    "note": "A Coalizão Cívica (KO) é liderada pela Platforma Obywatelska; o CHES 2024 avalia a PO (id 2603), núcleo da coalizão."
+  }
+}

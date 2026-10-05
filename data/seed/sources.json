@@ -1,0 +1,128 @@
+[
+  {
+    "id": "natural-earth",
+    "name": "Natural Earth — Admin 0 Countries 1:50m",
+    "publisher": "Natural Earth",
+    "url": "https://www.naturalearthdata.com/downloads/50m-cultural-vectors/",
+    "license": "Domínio público",
+    "citation": "Natural Earth. Free vector and raster map data @ naturalearthdata.com.",
+    "version": "5.x (GitHub nvkelso/natural-earth-vector, master)"
+  },
+  {
+    "id": "wikidata",
+    "name": "Wikidata",
+    "publisher": "Wikimedia Foundation",
+    "url": "https://www.wikidata.org/",
+    "license": "CC0 1.0",
+    "citation": "Wikidata (consulta SPARQL em query.wikidata.org).",
+    "version": "ao vivo"
+  },
+  {
+    "id": "partyfacts",
+    "name": "Party Facts",
+    "publisher": "Holger Döring & Sven Regel",
+    "url": "https://partyfacts.herokuapp.com/",
+    "license": null,
+    "citation": "Döring, Holger and Sven Regel. 2019. Party Facts: A database of political parties worldwide. Party Politics 25(2): 97–109.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "ches-europe-2024",
+    "name": "Chapel Hill Expert Survey — Europa 2024",
+    "publisher": "CHES",
+    "url": "https://www.chesdata.eu/ches-europe/",
+    "license": null,
+    "citation": "Chapel Hill Expert Survey (CHES), onda Europa 2024, arquivo CHES_2024_final_v2.",
+    "version": "2024 final v2"
+  },
+  {
+    "id": "ches-la-2020",
+    "name": "Chapel Hill Expert Survey — América Latina 2020",
+    "publisher": "CHES",
+    "url": "https://www.chesdata.eu/ches-la/",
+    "license": null,
+    "citation": "Chapel Hill Expert Survey Latin America (CHES-LA) 2020, aggregate level v01.",
+    "version": "2020 v01"
+  },
+  {
+    "id": "ches-canada-2023",
+    "name": "Chapel Hill Expert Survey — Canadá 2023",
+    "publisher": "CHES",
+    "url": "https://www.chesdata.eu/ches-canada/",
+    "license": null,
+    "citation": "Chapel Hill Expert Survey Canada (CHES-CA) 2023.",
+    "version": "2023"
+  },
+  {
+    "id": "ches-israel-2022",
+    "name": "Chapel Hill Expert Survey — Israel 2021–2022",
+    "publisher": "CHES",
+    "url": "https://www.chesdata.eu/ches-israel/",
+    "license": null,
+    "citation": "Chapel Hill Expert Survey Israel 2021–2022, means.",
+    "version": "2022"
+  },
+  {
+    "id": "parlgov",
+    "name": "ParlGov — Parliaments and Governments database",
+    "publisher": "Döring, Huber & Manow",
+    "url": "https://www.parlgov.org/",
+    "license": "CC BY-SA",
+    "citation": "Döring, Holger, Constantin Huber and Philip Manow. ParlGov: Parliaments and governments database (versão de desenvolvimento).",
+    "version": "development"
+  },
+  {
+    "id": "gps-2019",
+    "name": "Global Party Survey 2019",
+    "publisher": "Pippa Norris (Harvard)",
+    "url": "https://doi.org/10.7910/DVN/WMGTNS",
+    "license": "CC0 1.0",
+    "citation": "Norris, Pippa. 2020. Global Party Survey, 2019. Harvard Dataverse, V3. https://doi.org/10.7910/DVN/WMGTNS",
+    "version": "V2.1 (abr. 2020), Dataverse V3"
+  },
+  {
+    "id": "herre-gli",
+    "name": "Global Leader Ideology dataset (1945–2020)",
+    "publisher": "Bastian Herre",
+    "url": "https://github.com/bastianherre/global-leader-ideologies",
+    "license": null,
+    "citation": "Herre, Bastian. 2023. Identifying Ideologues: A Global Dataset on Political Leaders, 1945-2020. British Journal of Political Science 53(2): 740-748. https://doi.org/10.1017/S0007123422000217",
+    "version": "GitHub main"
+  },
+  {
+    "id": "vdem-row",
+    "name": "Regimes of the World (V-Dem), via Our World in Data",
+    "publisher": "V-Dem Institute / Our World in Data",
+    "url": "https://ourworldindata.org/grapher/political-regime",
+    "license": "CC BY 4.0 (OWID); dados V-Dem CC BY-SA 4.0",
+    "citation": "Lührmann, Anna, Marcus Tannenberg and Staffan I. Lindberg. 2018. Regimes of the World (RoW). Politics and Governance 6(1). Dados V-Dem processados por Our World in Data.",
+    "version": "OWID grapher"
+  },
+  {
+    "id": "electionguide",
+    "name": "ElectionGuide — próximas eleições",
+    "publisher": "IFES",
+    "url": "https://www.electionguide.org/elections/type/upcoming/",
+    "license": null,
+    "citation": "International Foundation for Electoral Systems (IFES). ElectionGuide.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "nobel-api",
+    "name": "Nobel Prize API v2.1",
+    "publisher": "Nobel Prize Outreach",
+    "url": "https://api.nobelprize.org/2.1/laureates",
+    "license": "Ver termos de uso",
+    "citation": "Nobel Prize Outreach. API nobelprize.org v2.1. Termos: https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/",
+    "version": "2.1"
+  },
+  {
+    "id": "atlas-curation",
+    "name": "Curadoria editorial ATLAS",
+    "publisher": "ATLAS",
+    "url": "/metodologia",
+    "license": null,
+    "citation": "Correções manuais em data/seed/overrides, cada uma com justificativa e fonte.",
+    "version": null
+  }
+]

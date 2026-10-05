@@ -1,0 +1,11 @@
+{
+  "_doc": "Territórios marcados como disputados no mapa. A geometria segue o Natural Earth (fronteiras de fato). Chave = código ATLAS do país.",
+  "TWN": "Autogovernado; reivindicado pela República Popular da China. Reconhecido por poucos Estados-membros da ONU.",
+  "PSE": "Estado reconhecido pela maioria dos membros da ONU; território sob ocupação israelense, governo dividido entre Autoridade Palestina e Hamas.",
+  "ESH": "Território não autônomo segundo a ONU; controlado majoritariamente por Marrocos e reivindicado pela RASD (Frente Polisário).",
+  "XKX": "Independência declarada em 2008; não reconhecida pela Sérvia e por parte dos membros da ONU.",
+  "SOL": "Somalilândia: independência autodeclarada em 1991; internacionalmente considerada parte da Somália.",
+  "CYN": "Chipre do Norte: reconhecido apenas pela Turquia.",
+  "KAS": "Geleira de Siachen: disputada entre Índia e Paquistão.",
+  "FLK": "Ilhas Malvinas/Falklands: território britânico ultramarino reivindicado pela Argentina."
+}
