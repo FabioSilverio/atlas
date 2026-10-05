@@ -359,6 +359,7 @@ export const electionResults = pgTable(
     partyLabel: text("party_label").notNull(),
     partyWiki: text("party_wiki"),
     partyId: integer("party_id").references(() => parties.id),
+    partyfactsId: integer("partyfacts_id"),
     candidate: text("candidate"),
     seats: integer("seats"),
     seatsBefore: integer("seats_before"),

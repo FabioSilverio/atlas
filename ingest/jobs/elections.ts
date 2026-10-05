@@ -228,6 +228,7 @@ export const electionsJob: Job = {
                 partyLabel: r.partyLabel.slice(0, 200),
                 partyWiki: r.party,
                 partyId: r.partyId,
+                partyfactsId: r.pf,
                 candidate: r.candidate,
                 seats: r.seats,
                 seatsBefore: r.seatsBefore,

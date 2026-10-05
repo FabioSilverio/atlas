@@ -74,6 +74,7 @@ export async function GovernmentContext({ code }: { code: string }) {
               {strength.seats}/{strength.total} cadeiras <span className="text-muted">· {Math.round((strength.seats / strength.total) * 100)}%</span>
               <div className="font-mono text-[10px] text-muted">
                 {bodyPt(strength.body)}, {strength.date.slice(0, 4)}
+                {party && !strength.label.toLowerCase().includes(party.name.toLowerCase().slice(0, 6)) && ` · como ${strength.label}`}
               </div>
             </>
           ) : (

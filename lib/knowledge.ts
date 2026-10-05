@@ -220,7 +220,7 @@ export const getIdeology = unstable_cache(
 
 // ── Elections ──────────────────────────────────────────────────
 
-export type ElectionResultRow = { party: string; candidate: string | null; seats: number | null; seatsBefore: number | null; share: number | null; econ: number | null; scoreSource: string | null };
+export type ElectionResultRow = { party: string; partyfactsId: number | null; candidate: string | null; seats: number | null; seatsBefore: number | null; share: number | null; econ: number | null; scoreSource: string | null };
 export type ElectionItem = {
   id: number;
   date: string;
@@ -244,8 +244,8 @@ export const getCountryElections = unstable_cache(
     const els = await rows<{ id: number; date: string; kind: "presidential" | "legislative"; body: string; title: string; status: string; total_seats: number | null; turnout: string | null; econ: string | null; galtan: string | null; coverage: string | null; winner: string | null; wikipedia_url: string | null }>(sql`
       select * from elections where country_code = ${code} order by date desc, kind`);
     const res = els.length
-      ? await rows<{ election_id: number; party_label: string; candidate: string | null; seats: number | null; seats_before: number | null; vote_share: string | null; econ: string | null; score_source: string | null; position: number }>(sql`
-          select election_id, party_label, candidate, seats, seats_before, vote_share, econ, score_source, position from election_results
+      ? await rows<{ election_id: number; party_label: string; partyfacts_id: number | null; candidate: string | null; seats: number | null; seats_before: number | null; vote_share: string | null; econ: string | null; score_source: string | null; position: number }>(sql`
+          select election_id, party_label, partyfacts_id, candidate, seats, seats_before, vote_share, econ, score_source, position from election_results
           where election_id in (select id from elections where country_code = ${code}) order by election_id, coalesce(seats, -1) desc, coalesce(vote_share, -1) desc, position`)
       : [];
     const items: ElectionItem[] = els.map((e) => ({
@@ -265,7 +265,7 @@ export const getCountryElections = unstable_cache(
       drift: null,
       results: res
         .filter((r) => r.election_id === e.id)
-        .map((r) => ({ party: r.party_label, candidate: r.candidate, seats: r.seats, seatsBefore: r.seats_before, share: num(r.vote_share), econ: num(r.econ), scoreSource: r.score_source })),
+        .map((r) => ({ party: r.party_label, partyfactsId: r.partyfacts_id, candidate: r.candidate, seats: r.seats, seatsBefore: r.seats_before, share: num(r.vote_share), econ: num(r.econ), scoreSource: r.score_source })),
     }));
     // Drift: change against the previous election for the same body.
     for (const e of items) {
@@ -300,7 +300,7 @@ export type GovContext = {
   } | null;
   rise: { election: ElectionItem; opponent: ElectionResultRow | null; winnerRow: ElectionResultRow | null; matched: "candidate" | "legislative" } | null;
   latest: ElectionItem | null;
-  strength: { seats: number; total: number; body: string; date: string } | null;
+  strength: { seats: number; total: number; body: string; date: string; label: string } | null;
   affiliated: import("@/lib/db/schema").ContextPerson[];
   sharedIdeology: import("@/lib/db/schema").ContextPerson[];
   tradition: ThinkerCard[];
@@ -309,11 +309,12 @@ export type GovContext = {
 
 export const getGovernmentContext = unstable_cache(
   async (code: string): Promise<GovContext | null> => {
-    const [g] = await rows<{ role: string; since: string | null; name: string | null; qid: string | null; party_name: string | null; party_qid: string | null; party_id: number | null }>(sql`
+    const [g] = await rows<{ role: string; since: string | null; name: string | null; qid: string | null; party_name: string | null; party_qid: string | null; party_id: number | null; party_pf: number | null }>(sql`
       select g.chief_executive_role as role, g.started_on as since, pe.name, pe.wikidata_qid as qid,
         (select pa.name from government_parties x join parties pa on pa.id = x.party_id where x.government_id = g.id and x.role = 'leader' order by x.position limit 1) as party_name,
         (select pa.wikidata_qid from government_parties x join parties pa on pa.id = x.party_id where x.government_id = g.id and x.role = 'leader' order by x.position limit 1) as party_qid,
-        (select pa.id from government_parties x join parties pa on pa.id = x.party_id where x.government_id = g.id and x.role = 'leader' order by x.position limit 1) as party_id
+        (select pa.id from government_parties x join parties pa on pa.id = x.party_id where x.government_id = g.id and x.role = 'leader' order by x.position limit 1) as party_id,
+        (select pa.partyfacts_id from government_parties x join parties pa on pa.id = x.party_id where x.government_id = g.id and x.role = 'leader' order by x.position limit 1) as party_pf
       from governments g
       left join people pe on pe.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
       where g.country_code = ${code} and g.ended_on is null`);
@@ -325,7 +326,9 @@ export const getGovernmentContext = unstable_cache(
     // How they got there: the most recent election where the leader ran (top two), else the last legislative vote before taking office.
     const surname = g.name ? fold(g.name).split(" ").filter((w) => w.length >= 3).slice(-1)[0] : null;
     let rise: GovContext["rise"] = null;
-    for (const e of elections) {
+    // Only elections up to the start of the mandate (plus a little slack for inaugurations).
+    const sinceLimit = g.since ? new Date(new Date(g.since).getTime() + 7 * 864e5).toISOString().slice(0, 10) : null;
+    for (const e of elections.filter((x) => !sinceLimit || x.date <= sinceLimit)) {
       const i = surname ? e.results.findIndex((r) => r.candidate && fold(r.candidate).includes(surname)) : -1;
       if (i >= 0 && i <= 1) {
         const others = e.results.filter((_, k) => k !== i);
@@ -346,9 +349,12 @@ export const getGovernmentContext = unstable_cache(
     let strength: GovContext["strength"] = null;
     if (lastLeg && g.party_name) {
       const key = fold(g.party_name).split(" (")[0];
-      const mine = lastLeg.results.find((r) => fold(r.party).includes(key) || key.includes(fold(r.party)));
+      // Party Facts id first (also covers federations/alliances mapped to the lead party), then the name.
+      const mine =
+        (g.party_pf ? lastLeg.results.find((r) => r.partyfactsId === g.party_pf) : undefined) ??
+        lastLeg.results.find((r) => fold(r.party).includes(key) || key.includes(fold(r.party)));
       const total = lastLeg.totalSeats ?? lastLeg.results.reduce((a, r) => a + (r.seats ?? 0), 0);
-      if (mine?.seats != null && total) strength = { seats: mine.seats, total, body: lastLeg.body, date: lastLeg.date };
+      if (mine?.seats != null && total) strength = { seats: mine.seats, total, body: lastLeg.body, date: lastLeg.date, label: mine.party };
     }
     const ideologyQids = ctx?.party?.ideologies.map((i) => i.qid) ?? [];
     const tradition = ideologyQids.length
