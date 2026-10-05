@@ -1,8 +1,8 @@
-import "dotenv/config";
 import { config } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
-config({ path: ".env.local" });
+// ENV_FILE=.env.neon points drizzle-kit at production (Neon) instead of the local PGlite.
+config({ path: process.env.ENV_FILE ?? ".env.local" });
 
 export default defineConfig({
   dialect: "postgresql",
