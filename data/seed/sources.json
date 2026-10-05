@@ -117,6 +117,51 @@
     "version": "2.1"
   },
   {
+    "id": "wikipedia-elections",
+    "name": "Wikipédia — infoboxes de eleições nacionais",
+    "publisher": "Wikimedia Foundation",
+    "url": "https://en.wikipedia.org/wiki/Template:Infobox_election",
+    "license": "CC BY-SA 4.0",
+    "citation": "Resultados (cadeiras, votos, candidatos) lidos das infoboxes dos artigos de eleições nacionais da Wikipédia em inglês; cada eleição linka a revisão usada.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "wikipedia",
+    "name": "Wikipédia — resumos de verbetes",
+    "publisher": "Wikimedia Foundation",
+    "url": "https://www.wikipedia.org/",
+    "license": "CC BY-SA 4.0",
+    "citation": "Parágrafos iniciais de verbetes (pt, com recuo para en), com link para o artigo.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "wikimedia-commons",
+    "name": "Wikimedia Commons — retratos",
+    "publisher": "Wikimedia Foundation",
+    "url": "https://commons.wikimedia.org/",
+    "license": "Licença individual de cada arquivo (exibida junto da imagem)",
+    "citation": "Retratos via Wikidata P18; autor e licença exibidos em cada página.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "rss",
+    "name": "Feeds RSS de opinião dos veículos monitorados",
+    "publisher": "Veículos listados em data/seed/outlets.json",
+    "url": "https://github.com/FabioSilverio/atlas/blob/main/data/seed/outlets.json",
+    "license": "Somente metadados (título, autor, data, link)",
+    "citation": "Coleta diária e a cada 4 horas; o texto das colunas não é armazenado.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "atlas-ai",
+    "name": "IA local ATLAS (Qwen 2.5 via Ollama)",
+    "publisher": "ATLAS / Alibaba Qwen (Apache 2.0)",
+    "url": "https://github.com/FabioSilverio/atlas/blob/main/.github/workflows/ai.yml",
+    "license": "Apache 2.0 (modelo)",
+    "citation": "Resumos, temas e teses gerados por modelo aberto rodando no GitHub Actions.",
+    "version": "qwen2.5:3b"
+  },
+  {
     "id": "atlas-curation",
     "name": "Curadoria editorial ATLAS",
     "publisher": "ATLAS",

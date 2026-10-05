@@ -2,7 +2,12 @@
 
 Painel global de quem governa cada país e de onde esse governo está no espectro ideológico, com fontes acadêmicas rastreáveis. Também mostra os ganhadores do Nobel por país. Público: jornalismo e análise.
 
-**Fase 1 (concluída):** mapa-múndi em globo, camadas "eixo econômico", "eixo cultural" e "Nobel por país", dossiê de país (cabeçalho, posição ideológica com a derivação explicada, Nobel), página de metodologia e versão mobile.
+**No ar:** https://atlas-six-pied.vercel.app
+
+- **Mapa:** camadas de eixo econômico, eixo cultural, eleições recentes (deriva), densidade de pensadores (com arcos de influência), Nobel e debate de opinião.
+- **Dossiê de país:** governo em contexto (história do partido no poder, como chegou lá, situação atual, intelectuais ligados), posição ideológica com derivação explicada, eleições e deriva de 20 anos, pensadores e influências estrangeiras, Nobel, colunistas, temas e teses em circulação, fontes.
+- **Páginas:** pensador (`/pensador/Q…`), ideologia (`/ideologia/Q…`), índices (`/pensadores`, `/ideologias`), busca global (`/busca`), metodologia.
+- **Feed** de eventos ao vivo (troca de governo, eleição, Nobel, tema ou tese ganhando tração).
 
 ## Rodando localmente
 
@@ -23,6 +28,9 @@ Outros comandos:
 |---|---|
 | `npm run ingest -- <job>` | roda um job: `sources`, `geo`, `regimes`, `governments`, `parties`, `scores`, `derive`, `nobel` |
 | `npm run ingest -- ideology` | só o que muda com frequência (governos → posições) |
+| `npm run ingest -- knowledge` | pensadores, ideologias, governo em contexto (semanal) |
+| `npm run ingest -- elections` | eleições desde 2005 + histórico do executivo |
+| `npm run ingest -- opinion` | feeds de opinião, temas e índice de busca |
 | `npm test` | testes da lógica de classificação |
 | `npm run db:studio` | navegador do banco (Drizzle Studio) |
 
@@ -48,6 +56,10 @@ Correções manuais ficam versionadas e exigem justificativa e fonte:
 - `data/seed/party-crosswalk.json`: ligação de partidos que o Party Facts ainda não conhece.
 - `data/seed/disputed.json`: territórios disputados.
 
+## IA local (gratuita)
+
+Resumos de colunas, temas e teses vêm de um modelo aberto (Qwen 2.5 3B, Apache 2.0) servido pelo Ollama dentro do GitHub Actions (`.github/workflows/ai.yml`, a cada 4 h; gratuito em repositório público). O worker (`scripts/ai-worker.mjs`) pega as colunas pendentes em `/api/ai/pending`, lê o trecho inicial da página só em memória e devolve resumo, tema e teses para `/api/ai/ingest`. A autenticação usa o token OIDC do próprio GitHub Actions, então não há segredo para configurar. Nenhuma classificação ideológica é feita por IA.
+
 ## Estrutura
 
 ```
@@ -61,14 +73,9 @@ data/seed/            correções editoriais e registro de fontes (versionados)
 public/geo/           geometria Natural Earth em TopoJSON (gerada pelo job geo)
 ```
 
-## Deploy na Vercel
+## Deploy
 
-1. Suba o repositório para o GitHub e importe na Vercel.
-2. Na Vercel: **Storage → Neon** (Marketplace) para criar o Postgres. Isso preenche `DATABASE_URL`.
-3. Em **Settings → Environment Variables**, adicione `CRON_SECRET` (um valor aleatório longo).
-4. Faça a primeira carga no Neon a partir do seu computador. Troque temporariamente `DATABASE_URL` no `.env.local` pela URL do Neon e rode `npm run db:push` e depois `npm run ingest -- all`.
-5. No GitHub, em **Settings → Secrets → Actions**, crie `DATABASE_URL`, `CRON_SECRET`, `REVALIDATE_URL` (a URL da Vercel) e `ATLAS_CONTACT`. O workflow `.github/workflows/ingest.yml` atualiza tudo diariamente.
-6. O cron da Vercel (`vercel.json`) atualiza o Nobel uma vez por dia. Em outubro, o GitHub Actions roda a cada 6 h.
+Produção na Vercel (projeto `atlas`, região gru1) com Postgres Neon criado pela integração da Vercel. Cada push em `main` publica. A ingestão roda no Vercel Cron (`vercel.json`): opinião 05:00, governos/Nobel 06:30, eleições 08:00 (UTC) e pensadores/contexto às segundas. Para uma carga manual no Neon, rode `vercel env pull .env.neon --environment=production` e depois `npx tsx --env-file=.env.neon ingest/run.ts all`.
 
 ## Fontes
 

@@ -1,0 +1,61 @@
+# Free local AI for ATLAS: an open model (Qwen 2.5, Apache-2.0) served by Ollama
+# on a GitHub-hosted runner (free for public repositories). It summarises recent
+# opinion pieces and extracts their theses; results go to the site authenticated
+# with this workflow's OIDC token — no secrets to configure.
+name: ai
+
+on:
+  schedule:
+    - cron: "15 */4 * * *" # every 4 hours
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "máximo de colunas nesta execução"
+        default: "80"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ai
+  cancel-in-progress: false
+
+jobs:
+  summarise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      ATLAS_URL: https://atlas-six-pied.vercel.app
+      OLLAMA_MODEL: qwen2.5:3b
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Pedir coleta de feeds e temas
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=atlas-ingest" | jq -r .value)
+          curl -sS -X POST -H "Authorization: Bearer $TOKEN" "$ATLAS_URL/api/ai/refresh" --max-time 300 || true
+      - name: Cache do modelo
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ env.OLLAMA_MODEL }}
+      - name: Instalar Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Subir o modelo
+        run: |
+          ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 1; done
+          ollama pull "$OLLAMA_MODEL"
+      - name: Resumir colunas e extrair teses
+        run: node scripts/ai-worker.mjs
+        env:
+          AI_LIMIT: ${{ inputs.limit || '80' }}
+          AI_DEADLINE_MIN: "150"
+      - name: Recalcular temas
+        if: always()
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=atlas-ingest" | jq -r .value)
+          curl -sS -X POST -H "Authorization: Bearer $TOKEN" "$ATLAS_URL/api/ai/refresh?only=themes" --max-time 300 || true

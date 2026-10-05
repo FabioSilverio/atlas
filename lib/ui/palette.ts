@@ -35,13 +35,18 @@ export function divergingColor(v: number): RGB {
 // Sequential (one hue, blue), anchored dark → light on the dark surface.
 const SEQ = ["#104281", "#1c5cab", "#2a78d6", "#5598e7", "#86b6ef", "#b7d3f6"].map(hex);
 export const NOBEL_BREAKS = [1, 3, 10, 30, 100, 300];
-export function sequentialColor(count: number): RGB | null {
+export const THINKER_BREAKS = [1, 3, 6, 12, 24, 40];
+export const OPINION_BREAKS = [1, 10, 30, 100, 300, 1000];
+export function sequentialColor(count: number, breaks: number[] = NOBEL_BREAKS): RGB | null {
   if (count <= 0) return null;
-  let i = NOBEL_BREAKS.findIndex((b) => count < b) - 1;
+  let i = breaks.findIndex((b) => count < b) - 1;
   if (i < 0) i = SEQ.length - 1;
   return SEQ[Math.max(0, Math.min(SEQ.length - 1, i))];
 }
-export const NOBEL_LEGEND = NOBEL_BREAKS.map((b, i) => ({ from: b, to: NOBEL_BREAKS[i + 1] ? NOBEL_BREAKS[i + 1] - 1 : null, color: css(SEQ[i]) }));
+export const sequentialLegend = (breaks: number[]) => breaks.map((b, i) => ({ from: b, color: css(SEQ[i]) }));
+export const NOBEL_LEGEND = sequentialLegend(NOBEL_BREAKS);
+/** Drift between consecutive elections is small; ±0.25 on the −1…+1 scale saturates the colour. */
+export const DRIFT_SCALE = 0.25;
 
 export const NO_DATA: RGB = hex("#1b2129");
 export const NO_GOV: RGB = hex("#12171d");

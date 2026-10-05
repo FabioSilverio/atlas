@@ -7,7 +7,7 @@ import type { Feature, FeatureCollection, Geometry, LineString } from "geojson";
 import type { Topology } from "topojson-specification";
 import type { MapCountry } from "@/lib/queries";
 import type { LayerId } from "@/lib/ui/labels";
-import { CONFIDENCE_ALPHA, NO_DATA, NO_GOV, css, divergingColor, sequentialColor, type RGB } from "@/lib/ui/palette";
+import { CONFIDENCE_ALPHA, DRIFT_SCALE, NO_DATA, NO_GOV, OPINION_BREAKS, THINKER_BREAKS, css, divergingColor, sequentialColor, type RGB } from "@/lib/ui/palette";
 import { MapTooltip } from "./MapTooltip";
 
 // Keep MapLibre's shared worker pool alive across map instances. Without this,
@@ -45,9 +45,15 @@ function graticule(step: number): FeatureCollection<LineString> {
 
 export function fillFor(c: MapCountry | undefined, layer: LayerId): { color: RGB; alpha: number; hatch: boolean } {
   if (!c) return { color: NO_GOV, alpha: 1, hatch: false };
-  if (layer === "nobel") {
-    const col = sequentialColor(c.nobel);
+  if (layer === "nobel" || layer === "thinkers" || layer === "themes") {
+    const col =
+      layer === "nobel" ? sequentialColor(c.nobel) : layer === "thinkers" ? sequentialColor(c.thinkers, THINKER_BREAKS) : sequentialColor(c.opinion?.articles ?? 0, OPINION_BREAKS);
     return col ? { color: col, alpha: 1, hatch: false } : { color: NO_DATA, alpha: 1, hatch: false };
+  }
+  if (layer === "elections") {
+    if (!c.election) return { color: NO_DATA, alpha: 1, hatch: false };
+    if (c.election.drift == null) return { color: NO_DATA, alpha: 1, hatch: true };
+    return { color: divergingColor(c.election.drift / DRIFT_SCALE), alpha: 1, hatch: false };
   }
   const pos = layer === "econ" ? c.econ : c.galtan;
   if (!pos) return { color: NO_GOV, alpha: 1, hatch: false }; // no government (Antarctica, uninhabited territories)
@@ -66,6 +72,25 @@ function hatchImage() {
       data.set(on ? [140, 152, 165, 150] : [0, 0, 0, 0], i);
     }
   return { width: s, height: s, data };
+}
+
+/** Points along the great circle between two lon/lat points (so arcs curve on the globe). */
+function arc(a: [number, number], b: [number, number], steps = 48): [number, number][] {
+  const r = Math.PI / 180;
+  const [l1, p1, l2, p2] = [a[0] * r, a[1] * r, b[0] * r, b[1] * r];
+  const d = 2 * Math.asin(Math.sqrt(Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((l2 - l1) / 2) ** 2));
+  if (d === 0) return [a, b];
+  const out: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const f = i / steps;
+    const A = Math.sin((1 - f) * d) / Math.sin(d);
+    const B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(p1) * Math.cos(l1) + B * Math.cos(p2) * Math.cos(l2);
+    const y = A * Math.cos(p1) * Math.sin(l1) + B * Math.cos(p2) * Math.sin(l2);
+    const z = A * Math.sin(p1) + B * Math.sin(p2);
+    out.push([Math.atan2(y, x) / r, Math.atan2(z, Math.sqrt(x * x + y * y)) / r]);
+  }
+  return out;
 }
 
 /** Great-circle angle (degrees) between two lon/lat points. */
@@ -164,6 +189,19 @@ export default function AtlasMap({ countries, layer, selected, onSelect }: Props
         paint: { "line-color": "#e4eaf0", "line-width": 1.2, "line-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.9, 0] },
       });
       map.addLayer({ id: "selected", type: "line", source: "countries", filter: ["==", ["get", "code"], ""], paint: { "line-color": "#3fd8e6", "line-width": 2 } });
+      // Influence arcs (thinkers layer): cyan = influences arriving, amber = influences leaving.
+      map.addSource("arcs", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: "arcs",
+        type: "line",
+        source: "arcs",
+        layout: { "line-cap": "round" },
+        paint: {
+          "line-color": ["case", ["==", ["get", "dir"], "in"], "#3fd8e6", "#ffc247"],
+          "line-width": ["interpolate", ["linear"], ["get", "n"], 1, 0.8, 10, 3.5],
+          "line-opacity": 0.75,
+        },
+      });
       setReady(true);
     });
 
@@ -229,6 +267,33 @@ export default function AtlasMap({ countries, layer, selected, onSelect }: Props
     if (!ready) return;
     mapRef.current?.setFilter("selected", ["==", ["get", "code"], selected ?? ""]);
   }, [ready, selected]);
+
+  // Influence arcs for the selected country when the thinkers layer is on.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !geo) return;
+    const src = map.getSource("arcs") as GeoJSONSource | undefined;
+    if (layer !== "thinkers" || !selected) {
+      src?.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+    const at = new Map(geo.features.map((f) => [f.properties.code, [f.properties.lx, f.properties.ly] as [number, number]]));
+    const ctrl = new AbortController();
+    fetch(`/api/influence?code=${selected}`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then(({ flows }: { flows: { src: string; dst: string; n: number }[] }) => {
+        const features = flows
+          .filter((f) => at.has(f.src) && at.has(f.dst))
+          .map((f) => ({
+            type: "Feature" as const,
+            properties: { n: f.n, dir: f.dst === selected ? "in" : "out" },
+            geometry: { type: "LineString" as const, coordinates: arc(at.get(f.src)!, at.get(f.dst)!) },
+          }));
+        src?.setData({ type: "FeatureCollection", features });
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [ready, geo, layer, selected]);
 
   // Fly to the selected country.
   useEffect(() => {

@@ -1,0 +1,434 @@
+{
+  "_doc": "Veículos e feeds RSS monitorados. kind = opinion (seção de opinião) ou politics (feed de política geral, usado onde não achamos feed de opinião). Para adicionar um veículo, inclua uma entrada e teste o feed.",
+  "outlets": [
+    {
+      "id": "folha",
+      "country": "BRA",
+      "name": "Folha de S.Paulo",
+      "url": "https://feeds.folha.uol.com.br",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://feeds.folha.uol.com.br/opiniao/rss091.xml"
+      ]
+    },
+    {
+      "id": "estadao",
+      "country": "BRA",
+      "name": "O Estado de S. Paulo",
+      "url": "https://www.estadao.com.br",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.estadao.com.br/arc/outboundfeeds/feeds/rss/sections/opiniao/"
+      ]
+    },
+    {
+      "id": "oglobo",
+      "country": "BRA",
+      "name": "O Globo",
+      "url": "https://oglobo.globo.com",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://oglobo.globo.com/rss/oglobo/opiniao"
+      ]
+    },
+    {
+      "id": "cartacapital",
+      "country": "BRA",
+      "name": "CartaCapital",
+      "url": "https://www.cartacapital.com.br",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.cartacapital.com.br/opiniao/feed/"
+      ]
+    },
+    {
+      "id": "poder360",
+      "country": "BRA",
+      "name": "Poder360",
+      "url": "https://www.poder360.com.br",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.poder360.com.br/opiniao/feed/"
+      ]
+    },
+    {
+      "id": "gazetadopovo",
+      "country": "BRA",
+      "name": "Gazeta do Povo",
+      "url": "https://www.gazetadopovo.com.br",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.gazetadopovo.com.br/feed/rss/opiniao.xml"
+      ]
+    },
+    {
+      "id": "nyt",
+      "country": "USA",
+      "name": "The New York Times",
+      "url": "https://rss.nytimes.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/Opinion.xml"
+      ]
+    },
+    {
+      "id": "wapo",
+      "country": "USA",
+      "name": "The Washington Post",
+      "url": "https://feeds.washingtonpost.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://feeds.washingtonpost.com/rss/opinions"
+      ]
+    },
+    {
+      "id": "wsj",
+      "country": "USA",
+      "name": "The Wall Street Journal",
+      "url": "https://feeds.a.dj.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://feeds.a.dj.com/rss/RSSOpinion.xml"
+      ]
+    },
+    {
+      "id": "foxnews",
+      "country": "USA",
+      "name": "Fox News",
+      "url": "https://moxie.foxnews.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://moxie.foxnews.com/google-publisher/opinion.xml"
+      ]
+    },
+    {
+      "id": "guardian",
+      "country": "GBR",
+      "name": "The Guardian",
+      "url": "https://www.theguardian.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.theguardian.com/uk/commentisfree/rss"
+      ]
+    },
+    {
+      "id": "telegraph",
+      "country": "GBR",
+      "name": "The Telegraph",
+      "url": "https://www.telegraph.co.uk",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.telegraph.co.uk/opinion/rss.xml"
+      ]
+    },
+    {
+      "id": "lemonde",
+      "country": "FRA",
+      "name": "Le Monde",
+      "url": "https://www.lemonde.fr",
+      "language": "fr",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.lemonde.fr/idees/rss_full.xml"
+      ]
+    },
+    {
+      "id": "lefigaro",
+      "country": "FRA",
+      "name": "Le Figaro",
+      "url": "https://www.lefigaro.fr",
+      "language": "fr",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.lefigaro.fr/rss/figaro_vox.xml"
+      ]
+    },
+    {
+      "id": "faz",
+      "country": "DEU",
+      "name": "Frankfurter Allgemeine",
+      "url": "https://www.faz.net",
+      "language": "de",
+      "kind": "politics",
+      "feeds": [
+        "https://www.faz.net/rss/aktuell/politik/"
+      ]
+    },
+    {
+      "id": "zeit",
+      "country": "DEU",
+      "name": "Die Zeit",
+      "url": "https://newsfeed.zeit.de",
+      "language": "de",
+      "kind": "politics",
+      "feeds": [
+        "https://newsfeed.zeit.de/politik/index"
+      ]
+    },
+    {
+      "id": "elpais",
+      "country": "ESP",
+      "name": "El País",
+      "url": "https://feeds.elpais.com",
+      "language": "es",
+      "kind": "opinion",
+      "feeds": [
+        "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada"
+      ]
+    },
+    {
+      "id": "elmundo",
+      "country": "ESP",
+      "name": "El Mundo",
+      "url": "https://e00-elmundo.uecdn.es",
+      "language": "es",
+      "kind": "opinion",
+      "feeds": [
+        "https://e00-elmundo.uecdn.es/elmundo/rss/opinion.xml"
+      ]
+    },
+    {
+      "id": "lanacion",
+      "country": "ARG",
+      "name": "La Nación",
+      "url": "https://www.lanacion.com.ar",
+      "language": "es",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/opinion/"
+      ]
+    },
+    {
+      "id": "clarin",
+      "country": "ARG",
+      "name": "Clarín",
+      "url": "https://www.clarin.com",
+      "language": "es",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.clarin.com/rss/opinion/"
+      ]
+    },
+    {
+      "id": "observador",
+      "country": "PRT",
+      "name": "Observador",
+      "url": "https://observador.pt",
+      "language": "pt",
+      "kind": "opinion",
+      "feeds": [
+        "https://observador.pt/opiniao/feed/"
+      ]
+    },
+    {
+      "id": "thehindu",
+      "country": "IND",
+      "name": "The Hindu",
+      "url": "https://www.thehindu.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.thehindu.com/opinion/feeder/default.rss"
+      ]
+    },
+    {
+      "id": "indianexpress",
+      "country": "IND",
+      "name": "The Indian Express",
+      "url": "https://indianexpress.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://indianexpress.com/section/opinion/feed/"
+      ]
+    },
+    {
+      "id": "japantimes",
+      "country": "JPN",
+      "name": "The Japan Times",
+      "url": "https://www.japantimes.co.jp",
+      "language": "en",
+      "kind": "politics",
+      "feeds": [
+        "https://www.japantimes.co.jp/feed/"
+      ]
+    },
+    {
+      "id": "globeandmail",
+      "country": "CAN",
+      "name": "The Globe and Mail",
+      "url": "https://www.theglobeandmail.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/opinion/"
+      ]
+    },
+    {
+      "id": "haaretz",
+      "country": "ISR",
+      "name": "Haaretz",
+      "url": "https://www.haaretz.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.haaretz.com/srv/opinion-rss"
+      ]
+    },
+    {
+      "id": "timesofisrael",
+      "country": "ISR",
+      "name": "The Times of Israel",
+      "url": "https://blogs.timesofisrael.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://blogs.timesofisrael.com/feed/"
+      ]
+    },
+    {
+      "id": "latercera",
+      "country": "CHL",
+      "name": "La Tercera",
+      "url": "https://www.latercera.com",
+      "language": "es",
+      "kind": "politics",
+      "feeds": [
+        "https://www.latercera.com/arc/outboundfeeds/rss/?outputType=xml"
+      ]
+    },
+    {
+      "id": "dailymaverick",
+      "country": "ZAF",
+      "name": "Daily Maverick",
+      "url": "https://www.dailymaverick.co.za",
+      "language": "en",
+      "kind": "politics",
+      "feeds": [
+        "https://www.dailymaverick.co.za/dmrss/"
+      ]
+    },
+    {
+      "id": "premiumtimes",
+      "country": "NGA",
+      "name": "Premium Times",
+      "url": "https://www.premiumtimesng.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.premiumtimesng.com/opinion/feed"
+      ]
+    },
+    {
+      "id": "nation",
+      "country": "KEN",
+      "name": "Nation",
+      "url": "https://nation.africa",
+      "language": "en",
+      "kind": "politics",
+      "feeds": [
+        "https://nation.africa/kenya/rss.xml"
+      ]
+    },
+    {
+      "id": "dailysabah",
+      "country": "TUR",
+      "name": "Daily Sabah",
+      "url": "https://www.dailysabah.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.dailysabah.com/rss/opinion"
+      ]
+    },
+    {
+      "id": "moscowtimes",
+      "country": "RUS",
+      "name": "The Moscow Times",
+      "url": "https://www.themoscowtimes.com",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.themoscowtimes.com/rss/opinion"
+      ]
+    },
+    {
+      "id": "globaltimes",
+      "country": "CHN",
+      "name": "Global Times",
+      "url": "https://www.globaltimes.cn",
+      "language": "en",
+      "kind": "politics",
+      "feeds": [
+        "https://www.globaltimes.cn/rss/outbrain.xml"
+      ]
+    },
+    {
+      "id": "scmp",
+      "country": "HKG",
+      "name": "South China Morning Post",
+      "url": "https://www.scmp.com",
+      "language": "en",
+      "kind": "politics",
+      "feeds": [
+        "https://www.scmp.com/rss/91/feed"
+      ]
+    },
+    {
+      "id": "hungarytoday",
+      "country": "HUN",
+      "name": "Hungary Today",
+      "url": "https://hungarytoday.hu",
+      "language": "en",
+      "kind": "opinion",
+      "feeds": [
+        "https://hungarytoday.hu/category/opinion/feed/"
+      ]
+    },
+    {
+      "id": "elcomercio",
+      "country": "PER",
+      "name": "El Comercio",
+      "url": "https://elcomercio.pe",
+      "language": "es",
+      "kind": "opinion",
+      "feeds": [
+        "https://elcomercio.pe/arcio/rss/category/opinion/"
+      ]
+    },
+    {
+      "id": "ladiaria",
+      "country": "URY",
+      "name": "la diaria",
+      "url": "https://ladiaria.com.uy",
+      "language": "es",
+      "kind": "politics",
+      "feeds": [
+        "https://ladiaria.com.uy/feeds/articulos/?seccion=opinion"
+      ]
+    },
+    {
+      "id": "notesfrompoland",
+      "country": "POL",
+      "name": "Notes from Poland",
+      "url": "https://notesfrompoland.com",
+      "language": "en",
+      "kind": "politics",
+      "feeds": [
+        "https://notesfrompoland.com/feed/"
+      ]
+    }
+  ]
+}

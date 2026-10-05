@@ -13,17 +13,18 @@ import { log } from "./log";
 // On Vercel only /tmp is writable (and ephemeral); locally the cache persists in data/cache.
 const CACHE_DIR = process.env.VERCEL ? path.join(os.tmpdir(), "atlas-cache") : path.join(process.cwd(), "data", "cache");
 // Wikimedia's policy asks for a contact in the User-Agent: set ATLAS_CONTACT.
-export const USER_AGENT = `ATLAS/0.1 (painel de pesquisa jornalistica${
-  process.env.ATLAS_CONTACT ? `; ${process.env.ATLAS_CONTACT}` : ""
-})`;
+export const USER_AGENT = `ATLAS/0.1 (painel de pesquisa jornalistica; ${process.env.ATLAS_CONTACT || "https://github.com/FabioSilverio/atlas"})`;
 
 type Meta = { url: string; fetchedAt: string; etag?: string; lastModified?: string; status: number };
 
 // Minimum spacing between requests to the same host.
 const HOST_INTERVAL_MS: Record<string, number> = {
-  "query.wikidata.org": 1500,
+  "query.wikidata.org": 800,
   "api.nobelprize.org": 300,
   "www.electionguide.org": 2000,
+  "en.wikipedia.org": 1000,
+  "pt.wikipedia.org": 1000,
+  "commons.wikimedia.org": 1000,
   default: 500,
 };
 const lastHit = new Map<string, number>();

@@ -2,20 +2,20 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
-// One driver for every environment: postgres.js speaks the wire protocol to
-// the local PGlite server (`npm run db`) and to Neon's pooled endpoint alike.
+// One driver for every environment. postgres.js pipelines concurrent queries on
+// a connection, which breaks behind a transaction-mode pooler (PgBouncer may
+// route the Parse and Bind of one query to different server connections) and
+// behind the local PGlite multiplexer. So: Neon's direct (unpooled) endpoint in
+// production, and a single connection locally.
 const globalForDb = globalThis as unknown as { pg?: ReturnType<typeof postgres> };
 
 function connect() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL não definida (veja .env.example)");
   const isLocal = /127\.0\.0\.1|localhost/.test(url);
+  const pooled = /-pooler\./.test(url);
   return postgres(url, {
-    // Neon's pooler (PgBouncer, transaction mode) does not support prepared statements.
-    prepare: false,
-    // The local PGlite server multiplexes connections onto a single-connection
-    // database and can interleave concurrent extended-protocol messages; one
-    // connection per process serialises queries and avoids that.
+    prepare: !pooled && !isLocal,
     max: isLocal ? 1 : 5,
     idle_timeout: 20,
     onnotice: () => {},

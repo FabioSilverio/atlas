@@ -15,6 +15,7 @@ import {
   URLS,
 } from "../lib/datasets";
 import { touchSource, type Job } from "../lib/job";
+import { partyFactsNameIndex } from "../lib/partyfacts-names";
 import { norm, num, sameLeader } from "../lib/text";
 
 type Insert = typeof schema.ideologyScores.$inferInsert;
@@ -81,8 +82,7 @@ export const scoresJob: Job = {
       if (!p.countryCode) continue;
       for (const n of [p.abbrev, p.name, p.nameEn]) if (norm(n)) ourByName.set(`${p.countryCode}|${norm(n)}`, p);
     }
-    const pfByName = new Map<string, number>();
-    for (const r of core) for (const n of [r.name_short, r.name, r.name_english]) if (norm(n)) pfByName.set(`${r.country}|${norm(n)}`, Number(r.partyfacts_id));
+    const pfByName = partyFactsNameIndex(core);
     const findByName = (country: string | undefined, names: (string | undefined)[]): Party | undefined => {
       if (!country) return;
       for (const n of names) {

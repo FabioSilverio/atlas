@@ -250,3 +250,297 @@ export const events = pgTable(
   },
   (t) => [index("events_time_idx").on(t.occurredAt)],
 );
+
+// ── Phase 2: thinkers, influence, ideologies ────────────────────
+
+export const thinkers = pgTable(
+  "thinkers",
+  {
+    personId: integer("person_id").primaryKey().references(() => people.id, { onDelete: "cascade" }),
+    occupations: jsonb("occupations").$type<{ qid: string; label: string }[]>().notNull().default([]),
+    fields: jsonb("fields").$type<{ qid: string; label: string }[]>().notNull().default([]),
+    movements: jsonb("movements").$type<{ qid: string; label: string }[]>().notNull().default([]),
+    notableWorks: jsonb("notable_works").$type<{ qid: string; label: string }[]>().notNull().default([]),
+    awards: jsonb("awards").$type<{ qid: string; label: string }[]>().notNull().default([]),
+    sitelinks: integer("sitelinks").notNull().default(0),
+    description: text("description"),
+    summary: text("summary"), // Wikipedia lead (CC BY-SA), attributed in the UI
+    summaryUrl: text("summary_url"),
+    birthYear: integer("birth_year"),
+    deathYear: integer("death_year"),
+    primaryCountry: char("primary_country", { length: 3 }),
+    ...provenance,
+  },
+  (t) => [index("thinkers_country_idx").on(t.primaryCountry), index("thinkers_sitelinks_idx").on(t.sitelinks)],
+);
+
+export const thinkerCountries = pgTable(
+  "thinker_countries",
+  {
+    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    relation: text("relation").notNull(), // citizenship | birth
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.countryCode, t.relation] }), index("tc_country_idx").on(t.countryCode)],
+);
+
+// Wikidata P737 "influenced by": influencer → influenced.
+export const thinkerInfluences = pgTable(
+  "thinker_influences",
+  {
+    influencerId: integer("influencer_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    influencedId: integer("influenced_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    sourceUrl: text("source_url"),
+  },
+  (t) => [primaryKey({ columns: [t.influencerId, t.influencedId] }), index("ti_influenced_idx").on(t.influencedId)],
+);
+
+export const ideologies = pgTable("ideologies", {
+  qid: text("qid").primaryKey(),
+  name: text("name").notNull(),
+  nameEn: text("name_en"),
+  description: text("description"),
+  summary: text("summary"),
+  summaryUrl: text("summary_url"),
+  ...provenance,
+});
+
+export const partyIdeologies = pgTable(
+  "party_ideologies",
+  {
+    partyId: integer("party_id").notNull().references(() => parties.id, { onDelete: "cascade" }),
+    ideologyQid: text("ideology_qid").notNull().references(() => ideologies.qid, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.partyId, t.ideologyQid] }), index("pi_ideology_idx").on(t.ideologyQid)],
+);
+
+export const thinkerIdeologies = pgTable(
+  "thinker_ideologies",
+  {
+    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    ideologyQid: text("ideology_qid").notNull().references(() => ideologies.qid, { onDelete: "cascade" }),
+    relation: text("relation").notNull(), // ideology | movement
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.ideologyQid] }), index("thi_ideology_idx").on(t.ideologyQid)],
+);
+
+// ── Phase 3: elections and ideological drift ────────────────────
+
+export const elections = pgTable(
+  "elections",
+  {
+    id: serial("id").primaryKey(),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    date: date("date").notNull(),
+    kind: text("kind").notNull(), // presidential | legislative
+    body: text("body").notNull(), // "Chamber of Deputies", "President"…
+    title: text("title").notNull(),
+    status: text("status").notNull().default("held"), // held | ongoing
+    turnout: numeric("turnout"),
+    totalSeats: integer("total_seats"),
+    // Seat-weighted (legislative) or vote-weighted (presidential) position of the result.
+    econ: numeric("econ"),
+    galtan: numeric("galtan"),
+    coverage: numeric("coverage"), // share of seats/votes whose party has a score
+    winner: text("winner"),
+    runoffDate: date("runoff_date"),
+    wikipediaUrl: text("wikipedia_url"),
+    ...provenance,
+  },
+  (t) => [uniqueIndex("elections_unique").on(t.countryCode, t.date, t.body), index("elections_country_idx").on(t.countryCode, t.date)],
+);
+
+export const electionResults = pgTable(
+  "election_results",
+  {
+    id: serial("id").primaryKey(),
+    electionId: integer("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    partyLabel: text("party_label").notNull(),
+    partyWiki: text("party_wiki"),
+    partyId: integer("party_id").references(() => parties.id),
+    candidate: text("candidate"),
+    seats: integer("seats"),
+    seatsBefore: integer("seats_before"),
+    votes: numeric("votes"),
+    voteShare: numeric("vote_share"),
+    econ: numeric("econ"),
+    galtan: numeric("galtan"),
+    scoreSource: text("score_source"),
+  },
+  (t) => [index("er_election_idx").on(t.electionId)],
+);
+
+// Wikipedia election articles discovered per country; re-read when their revision changes.
+export const electionArticles = pgTable(
+  "election_articles",
+  {
+    title: text("title").primaryKey(),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    year: integer("year").notNull(),
+    revid: integer("revid"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+  },
+  (t) => [index("ea_country_idx").on(t.countryCode)],
+);
+
+// Context for the current government: the ruling party's history and ideas, and
+// the intellectuals with a documented link to it (party membership or shared
+// ideology labels on Wikidata). Rebuilt by the `context` job.
+export type ContextPerson = {
+  qid: string;
+  name: string;
+  description: string | null;
+  occupations: string[];
+  imageUrl: string | null;
+  sitelinks: number;
+  shared?: string[]; // ideology labels shared with the party/leader
+};
+export const governmentContext = pgTable("government_context", {
+  countryCode: char("country_code", { length: 3 }).primaryKey(),
+  party: jsonb("party").$type<{
+    qid: string;
+    name: string;
+    founded: string | null;
+    founders: string[];
+    chair: string | null;
+    alignment: string[];
+    ideologies: { qid: string; label: string }[];
+    summary: string | null;
+    summaryUrl: string | null;
+  } | null>(),
+  leader: jsonb("leader").$type<{ qid: string; name: string; ideologies: { qid: string; label: string }[]; influencedBy: { qid: string; label: string }[] } | null>(),
+  affiliated: jsonb("affiliated").$type<ContextPerson[]>().notNull().default([]),
+  sharedIdeology: jsonb("shared_ideology").$type<ContextPerson[]>().notNull().default([]),
+  ...provenance,
+});
+
+// Small key/value store for incremental jobs (scan cursors etc.).
+export const jobState = pgTable("job_state", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Chief executive per year (Herre 2023 up to 2020; ATLAS snapshots afterwards).
+export const executiveHistory = pgTable(
+  "executive_history",
+  {
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    year: integer("year").notNull(),
+    leader: text("leader"),
+    party: text("party"),
+    partyfactsId: integer("partyfacts_id"),
+    label: text("label"), // leftist | centrist | rightist | none
+    econ: numeric("econ"),
+    sourceId: text("source_id"),
+  },
+  (t) => [primaryKey({ columns: [t.countryCode, t.year] })],
+);
+
+// ── Phase 4: outlets, columnists, articles, theses, themes ──────
+
+export const outlets = pgTable("outlets", {
+  id: text("id").primaryKey(), // slug
+  countryCode: char("country_code", { length: 3 }).notNull(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  language: text("language"),
+  wikidataQid: text("wikidata_qid"),
+  alignment: text("alignment"), // Wikidata P1387 labels, if any
+  kind: text("kind").notNull().default("opinion"), // opinion | politics (general feed)
+  feeds: jsonb("feeds").$type<string[]>().notNull().default([]),
+  ...provenance,
+});
+
+export const columnists = pgTable(
+  "columnists",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    outletId: text("outlet_id").notNull().references(() => outlets.id, { onDelete: "cascade" }),
+    personId: integer("person_id").references(() => people.id),
+    articles: integer("articles").notNull().default(0),
+    lastSeen: timestamp("last_seen", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("columnists_unique").on(t.outletId, t.name)],
+);
+
+// Metadata only — never the article text (copyright). Summaries and theses come from our own model.
+export const articles = pgTable(
+  "articles",
+  {
+    id: serial("id").primaryKey(),
+    outletId: text("outlet_id").notNull().references(() => outlets.id, { onDelete: "cascade" }),
+    columnistId: integer("columnist_id").references(() => columnists.id),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    author: text("author"),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+    language: text("language"),
+    summary: text("summary"),
+    summaryModel: text("summary_model"),
+    theme: text("theme"), // topic label from the local model
+    aiProcessedAt: timestamp("ai_processed_at", { withTimezone: true }),
+    keyphrases: jsonb("keyphrases").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("articles_url").on(t.url), index("articles_country_time").on(t.countryCode, t.publishedAt)],
+);
+
+export const theses = pgTable(
+  "theses",
+  {
+    id: serial("id").primaryKey(),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    text: text("text").notNull(),
+    theme: text("theme"),
+    model: text("model").notNull(),
+    firstSeen: timestamp("first_seen", { withTimezone: true }).notNull(),
+    lastSeen: timestamp("last_seen", { withTimezone: true }).notNull(),
+    mentions: integer("mentions").notNull().default(1),
+  },
+  (t) => [index("theses_country_idx").on(t.countryCode, t.lastSeen)],
+);
+
+export const thesisMentions = pgTable(
+  "thesis_mentions",
+  {
+    thesisId: integer("thesis_id").notNull().references(() => theses.id, { onDelete: "cascade" }),
+    articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.thesisId, t.articleId] })],
+);
+
+// Rolling theme trends per country ('WLD' = world), recomputed daily.
+export const themeTrends = pgTable(
+  "theme_trends",
+  {
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    theme: text("theme").notNull(),
+    recent: integer("recent").notNull(), // mentions in the last 7 days
+    previous: integer("previous").notNull(), // mentions in the 21 days before
+    trend: text("trend").notNull(), // rising | stable | falling | new
+    sampleArticleIds: jsonb("sample_article_ids").$type<number[]>().notNull().default([]),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.countryCode, t.theme] })],
+);
+
+// ── Phase 5: global search ─────────────────────────────────────
+
+export const searchIndex = pgTable(
+  "search_index",
+  {
+    kind: text("kind").notNull(), // country | person | thinker | party | ideology | theme | election
+    ref: text("ref").notNull(),
+    title: text("title").notNull(),
+    subtitle: text("subtitle"),
+    countryCode: char("country_code", { length: 3 }),
+    url: text("url").notNull(),
+    weight: numeric("weight").notNull().default("0"),
+    norm: text("norm").notNull(), // accent-free lowercase haystack
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.ref] })],
+);

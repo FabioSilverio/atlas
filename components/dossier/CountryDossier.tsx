@@ -1,8 +1,22 @@
+import { Suspense } from "react";
 import { getDossier, getSources } from "@/lib/queries";
 import { DossierHeader } from "./DossierHeader";
+import { ElectionsSection } from "./ElectionsSection";
+import { GovernmentContext } from "./GovernmentContext";
 import { IdeologySection } from "./IdeologySection";
 import { NobelSection } from "./NobelSection";
+import { OpinionSection } from "./OpinionSection";
 import { SourcesSection } from "./SourcesSection";
+import { ThinkersSection } from "./ThinkersSection";
+
+function SectionFallback({ label }: { label: string }) {
+  return (
+    <section className="px-4 py-4">
+      <div className="label mb-2">{label}</div>
+      <div className="h-16 animate-pulse bg-panel-2" />
+    </section>
+  );
+}
 
 export async function CountryDossier({ code }: { code: string }) {
   const [d, sources] = await Promise.all([getDossier(code), getSources()]);
@@ -10,34 +24,21 @@ export async function CountryDossier({ code }: { code: string }) {
   return (
     <div className="divide-y divide-line">
       <DossierHeader d={d} />
+      <Suspense fallback={<SectionFallback label="Governo em contexto" />}>
+        <GovernmentContext code={code} />
+      </Suspense>
       <IdeologySection d={d} />
+      <Suspense fallback={<SectionFallback label="Eleições e deriva ideológica" />}>
+        <ElectionsSection code={code} />
+      </Suspense>
+      <Suspense fallback={<SectionFallback label="Pensadores e intelectuais" />}>
+        <ThinkersSection code={code} />
+      </Suspense>
       <NobelSection entries={d.nobel} />
-      <Upcoming />
-      <SourcesSection ids={d.sourceIds} sources={sources} d={d} />
+      <Suspense fallback={<SectionFallback label="Debate de opinião" />}>
+        <OpinionSection code={code} />
+      </Suspense>
+      <SourcesSection ids={[...d.sourceIds, "wikipedia-elections", "wikipedia"]} sources={sources} d={d} />
     </div>
-  );
-}
-
-/** Sections from later phases, listed so the reader knows what the dossier will hold. */
-function Upcoming() {
-  const items = [
-    ["Histórico eleitoral e deriva ideológica (20 anos)", 3],
-    ["Pensadores e intelectuais influentes", 2],
-    ["Colunistas e veículos de opinião", 4],
-    ["Ideias e teses em circulação", 4],
-    ["Conexões: pensadores estrangeiros mais citados", 2],
-  ] as const;
-  return (
-    <section className="px-4 py-4">
-      <h3 className="label mb-2">Próximas seções</h3>
-      <ul className="space-y-1">
-        {items.map(([t, p]) => (
-          <li key={t} className="flex items-center justify-between text-[12.5px] text-muted">
-            <span>{t}</span>
-            <span className="font-mono text-[10.5px]">fase {p}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

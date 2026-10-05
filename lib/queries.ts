@@ -21,6 +21,11 @@ export type MapCountry = {
   econ: Position | null;
   galtan: Position | null;
   nobel: number;
+  thinkers: number;
+  /** Most recent national election with a computable position, and its drift vs the previous one for the same body. */
+  election: { date: string; body: string; kind: string; econ: number | null; drift: number | null } | null;
+  /** Opinion pieces tracked in the last 30 days and the hottest theme (Phase 4). */
+  opinion: { articles: number; theme: string | null; trend: string | null } | null;
 };
 
 type Row = Record<string, unknown>;
@@ -45,13 +50,25 @@ export const getMapData = unstable_cache(
       gal_e: boolean | null;
       has_gov: boolean;
       nobel: number;
+      thinkers: number;
+      el_date: string | null;
+      el_body: string | null;
+      el_kind: string | null;
+      el_econ: string | null;
+      el_prev: string | null;
+      op_articles: number | null;
+      op_theme: string | null;
+      op_trend: string | null;
     }>(sql`
       select c.code, c.iso2, c.name_pt as name, c.subregion as region, c.regime_type as regime,
              c.is_disputed as disputed, c.ne_type,
              p.name as chief, (g.id is not null) as has_gov,
              e.value_norm as econ_v, e.confidence as econ_c, e.is_estimate as econ_e,
              t.value_norm as gal_v, t.confidence as gal_c, t.is_estimate as gal_e,
-             coalesce(n.cnt, 0)::int as nobel
+             coalesce(n.cnt, 0)::int as nobel,
+             coalesce(th.cnt, 0)::int as thinkers,
+             el.date as el_date, el.body as el_body, el.kind as el_kind, el.econ as el_econ, el.prev as el_prev,
+             op.articles as op_articles, op.theme as op_theme, op.trend as op_trend
       from countries c
       left join governments g on g.country_code = c.code and g.ended_on is null
       left join people p on p.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
@@ -61,6 +78,21 @@ export const getMapData = unstable_cache(
         select country_code, count(distinct laureate_id) cnt
         from nobel_laureate_countries where relation in ('birth', 'org_seat') group by country_code
       ) n on n.country_code = c.code
+      left join (select primary_country, count(*) cnt from thinkers group by primary_country) th on th.primary_country = c.code
+      left join lateral (
+        select e.date, e.body, e.kind, e.econ,
+          (select p2.econ from elections p2 where p2.country_code = e.country_code and p2.body = e.body and p2.kind = e.kind
+             and p2.date < e.date and p2.econ is not null and coalesce(p2.coverage, 0) >= 0.4 order by p2.date desc limit 1) as prev
+        from elections e
+        where e.country_code = c.code and e.econ is not null and coalesce(e.coverage, 0) >= 0.4
+        order by e.date desc, (e.kind = 'legislative') desc limit 1
+      ) el on true
+      left join lateral (
+        select (select count(*)::int from articles a where a.country_code = c.code and a.published_at > now() - interval '30 days') as articles,
+               tt.theme, tt.trend
+        from (select 1) x
+        left join lateral (select theme, trend from theme_trends where country_code = c.code order by (trend = 'rising') desc, recent desc limit 1) tt on true
+      ) op on true
       order by c.name_pt`);
     const pos = (v: string | null, c: Confidence | null, e: boolean | null, has: boolean): Position | null =>
       has ? { v: v == null ? null : Number(v), c, est: !!e } : null;
@@ -76,6 +108,17 @@ export const getMapData = unstable_cache(
       econ: pos(x.econ_v, x.econ_c, x.econ_e, x.has_gov),
       galtan: pos(x.gal_v, x.gal_c, x.gal_e, x.has_gov),
       nobel: x.nobel,
+      thinkers: x.thinkers,
+      election: x.el_date
+        ? {
+            date: new Date(x.el_date).toISOString().slice(0, 10),
+            body: x.el_body!,
+            kind: x.el_kind!,
+            econ: x.el_econ == null ? null : Number(x.el_econ),
+            drift: x.el_econ != null && x.el_prev != null ? Number(x.el_econ) - Number(x.el_prev) : null,
+          }
+        : null,
+      opinion: x.op_articles ? { articles: x.op_articles, theme: x.op_theme, trend: x.op_trend } : null,
     }));
   },
   ["map-data"],
@@ -189,6 +232,19 @@ export const getDossier = unstable_cache(
       sourceIds.add("wikidata");
       if (parties.some((p) => p.partyfacts_id)) sourceIds.add("partyfacts");
       if (g.next_election_on) sourceIds.add("electionguide");
+      // A pending run-off (from the election infobox) is the next national vote when ElectionGuide has none listed.
+      if (!g.next_election_on) {
+        const [r] = await rows<{ runoff_date: string; kind: string; body: string; wikipedia_url: string | null }>(sql`
+          select runoff_date, kind, body, wikipedia_url from elections
+          where country_code = ${code} and runoff_date >= current_date order by runoff_date limit 1`);
+        if (r) {
+          g.next_election_on = r.runoff_date;
+          g.next_election_name = `2º turno · ${r.kind === "presidential" ? "eleição presidencial" : r.body}`;
+          g.next_election_confirmed = true;
+          g.next_election_source_url = r.wikipedia_url;
+          sourceIds.add("wikipedia-elections");
+        }
+      }
       government = {
         hos: g.hos_name ? { name: String(g.hos_name), qid: (g.hos_qid as string) ?? null } : null,
         hog: g.hog_name ? { name: String(g.hog_name), qid: (g.hog_qid as string) ?? null } : null,

@@ -96,7 +96,7 @@ export default async function Metodologia() {
           </p>
         </Section>
 
-        <Section n="4" title="Limites conhecidos (Fase 1)">
+        <Section n="4" title="Limites conhecidos">
           <ul className="ml-5 list-disc space-y-1">
             <li>Usa só o partido do chefe do executivo. A ponderação por cadeiras dos parceiros de coalizão chega na Fase 3, com os dados de composição parlamentar.</li>
             <li>
@@ -116,7 +116,61 @@ export default async function Metodologia() {
           </p>
         </Section>
 
-        <Section n="6" title="Correções editoriais">
+        <Section n="6" title="Governo em contexto">
+          <p>
+            Para o partido do chefe do executivo: fundação, fundadores e presidente (Wikidata), posição e ideologias declaradas (P1387, P1142) e o parágrafo inicial do
+            verbete na Wikipédia. “Como chegou lá” é a eleição mais recente em que o líder aparece entre os dois primeiros colocados ou, em sistemas parlamentaristas,
+            a última eleição legislativa antes da posse.
+          </p>
+          <p>
+            Intelectuais <strong className="text-ink">ligados</strong> ao governo só aparecem com vínculo documentado, e o tipo de vínculo é sempre dito: (a) filiação
+            ao partido no poder registrada no Wikidata (P102); (b) compatriotas vivos que compartilham rótulos ideológicos (P1142) com o partido ou com o líder, o
+            que é afinidade declarada, não participação no governo; (c) a tradição intelectual das ideologias do partido, a partir do acervo de pensadores.
+            Contam como intelectuais as ocupações de comentarista, teórico, economista, filósofo, cientista político, historiador, ensaísta e similares;
+            escritores entram só se não forem políticos de carreira.
+          </p>
+        </Section>
+
+        <Section n="7" title="Pensadores">
+          <p>
+            Pessoas do Wikidata com ocupação de filósofo, economista, sociólogo, cientista político, antropólogo, escritor político, historiador ou ensaísta, acima de um
+            piso de notabilidade (número de edições da Wikipédia), até 40 por país. País = cidadania que coincide com o local de nascimento, senão a primeira
+            cidadania, senão o país de nascimento (fronteiras atuais). Influências: Wikidata P737. Retratos do Wikimedia Commons com autor e licença.
+          </p>
+        </Section>
+
+        <Section n="8" title="Eleições e deriva">
+          <p>
+            Resultados lidos das infoboxes dos artigos de eleições nacionais da Wikipédia em inglês (desde 2005), atualizados várias vezes ao dia perto de eleições.
+            Cada partido recebe a melhor posição acadêmica disponível (mesma hierarquia acima, via Party Facts e redirecionamentos da Wikipédia). Federações e
+            alianças usam a legenda líder, com nota. A posição de uma casa legislativa é a média ponderada pelas cadeiras; a de uma eleição presidencial,
+            ponderada pelos votos. Só mostramos quando ao menos 40% das cadeiras têm score. Deriva = diferença para a eleição anterior da mesma casa.
+          </p>
+        </Section>
+
+        <Section n="9" title="Debate de opinião e IA local">
+          <p>
+            Monitoramos feeds RSS das seções de opinião dos principais veículos (ou de política, quando não há feed de opinião, sinalizado). Guardamos só
+            título, autor, veículo, data e link, nunca o texto. A orientação editorial vem do Wikidata (P1387) quando registrada.
+          </p>
+          <p>
+            Resumos, temas e teses são produzidos por um modelo de linguagem aberto e gratuito (Qwen 2.5, licença Apache 2.0) rodando via Ollama no GitHub Actions a
+            cada 4 horas. O modelo lê o trecho inicial da página apenas em memória e escreve um resumo próprio. Teses parecidas no mesmo país são agrupadas
+            (sobreposição de palavras), e tendências comparam a última semana com a média das três anteriores. Nenhuma classificação ideológica é feita pelo
+            modelo.
+          </p>
+        </Section>
+
+        <Section n="10" title="Atualização">
+          <ul className="ml-5 list-disc space-y-1">
+            <li>Diário: governos, posições, Nobel, histórico, eleições (Vercel Cron, região São Paulo).</li>
+            <li>A cada 4 horas: colunas, temas e resumos pela IA local (GitHub Actions).</li>
+            <li>Semanal: pensadores, ideologias e governo em contexto.</li>
+            <li>O feed na base da tela consulta eventos novos a cada minuto.</li>
+          </ul>
+        </Section>
+
+        <Section n="11" title="Correções editoriais">
           <p>Cada correção sobre os dados automáticos exige justificativa, fonte e data de verificação.</p>
           <ul className="space-y-2 text-[13.5px]">
             {ov.map(([code, o]) => (
@@ -145,7 +199,7 @@ export default async function Metodologia() {
           </ul>
         </Section>
 
-        <Section n="7" title="Fontes">
+        <Section n="12" title="Fontes">
           <ul className="space-y-3">
             {sources.map((s) => (
               <li key={s.id} className="text-[13.5px]">

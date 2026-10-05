@@ -3,9 +3,7 @@ import { AtlasShell } from "@/components/shell/AtlasShell";
 import { CountryDossier } from "@/components/dossier/CountryDossier";
 import { DossierSkeleton } from "@/components/dossier/DossierSkeleton";
 import { getEvents, getMapData, getStats } from "@/lib/queries";
-import type { LayerId } from "@/lib/ui/labels";
-
-const LAYER_IDS: LayerId[] = ["econ", "galtan", "nobel"];
+import { LAYER_IDS, type LayerId } from "@/lib/ui/labels";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;

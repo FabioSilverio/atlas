@@ -1,6 +1,29 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["gru1"],
-  "crons": [{ "path": "/api/cron/daily", "schedule": "30 6 * * *" }]
+  "regions": [
+    "gru1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/opinion",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/daily",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/elections",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/thinkers",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/context",
+      "schedule": "0 9 * * 2"
+    }
+  ]
 }

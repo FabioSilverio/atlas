@@ -1,0 +1,7 @@
+{
+  "_doc": "Ligações manuais de rótulos de partidos/alianças das infoboxes eleitorais da Wikipédia (chave = título do artigo ou rótulo exato) para um partido do Party Facts. Usado quando a lista é uma federação ou aliança: atribuímos a posição da legenda líder e dizemos isso na nota.",
+  "Brazil of Hope": { "partyfacts_id": 356, "note": "Federação Brasil da Esperança (PT, PCdoB, PV): posição do PT, legenda líder." },
+  "PSDB Cidadania": { "partyfacts_id": 225, "note": "Federação PSDB–Cidadania: posição do PSDB, legenda líder." },
+  "PSOL REDE": { "partyfacts_id": 501, "note": "Federação PSOL–REDE: posição do PSOL, legenda líder." },
+  "PSOL REDE Federation": { "partyfacts_id": 501, "note": "Federação PSOL–REDE: posição do PSOL, legenda líder." }
+}
