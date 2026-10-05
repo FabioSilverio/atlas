@@ -33,6 +33,13 @@ const decode = (s: string) =>
 
 type Item = { title: string; url: string; author: string | null; published: Date };
 
+/** Honour the encoding declared in the XML prolog (Folha's feed is ISO-8859-1). */
+function decodeXml(buf: Buffer): string {
+  const head = buf.subarray(0, 200).toString("latin1");
+  const enc = head.match(/encoding=["']([\w-]+)["']/i)?.[1]?.toLowerCase();
+  return enc && /iso-8859-1|latin-?1|windows-1252/.test(enc) ? buf.toString("latin1") : buf.toString("utf8");
+}
+
 function parseFeed(xml: string): Item[] {
   const doc = parser.parse(xml);
   const rss = doc.rss?.channel?.item ?? doc["rdf:RDF"]?.item;
@@ -110,7 +117,7 @@ export const opinionJob: Job = {
       for (const feed of o.feeds) {
         let items: Item[];
         try {
-          items = parseFeed((await fetchCached(feed, { ttlHours: 1, headers: { Accept: "application/rss+xml, application/xml, text/xml" } })).toString("utf8"));
+          items = parseFeed(decodeXml(await fetchCached(feed, { ttlHours: 1, headers: { Accept: "application/rss+xml, application/xml, text/xml" } })));
           fetched++;
         } catch (err) {
           failed++;
@@ -131,7 +138,10 @@ export const opinionJob: Job = {
             .returning({ id: schema.columnists.id, name: schema.columnists.name });
           for (const r of rows) colIds.set(r.name, r.id);
         }
-        const rows = fresh.map((i) => ({
+        // Some feeds repeat an item; one row per URL per batch.
+        const seenUrls = new Set<string>();
+        const unique = fresh.filter((i) => (seenUrls.has(i.url) ? false : (seenUrls.add(i.url), true)));
+        const rows = unique.map((i) => ({
           outletId: o.id,
           columnistId: i.author ? (colIds.get(i.author) ?? null) : null,
           countryCode: o.country,
@@ -143,8 +153,13 @@ export const opinionJob: Job = {
           keyphrases: keyphrases(i.title),
         }));
         for (const b of chunks(rows, 100)) {
-          const r = await db.insert(schema.articles).values(b).onConflictDoNothing().returning({ id: schema.articles.id });
-          inserted += r.length;
+          // Re-seen URLs refresh title/author (e.g. after an encoding fix); xmax = 0 marks real inserts.
+          const r = await db
+            .insert(schema.articles)
+            .values(b)
+            .onConflictDoUpdate({ target: schema.articles.url, set: { title: sql`excluded.title`, author: sql`excluded.author`, keyphrases: sql`excluded.keyphrases` } })
+            .returning({ id: schema.articles.id, isNew: sql<boolean>`(xmax = 0)` });
+          inserted += r.filter((x) => x.isNew).length;
         }
       }
     }
