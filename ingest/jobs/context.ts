@@ -4,18 +4,8 @@ import { touchSource, type Job } from "../lib/job";
 import { log } from "../lib/log";
 import { qid, sparql } from "../lib/sparql";
 import { chunks, wikiExtracts, wikiTitle } from "../lib/wiki";
+import { intellectualRank } from "@/lib/ideology/intellectual";
 
-// "Intellectual" by Wikidata occupation (English labels, whole words).
-// Core: the reason someone belongs on this list. Weak: counts only for people who
-// are neither career politicians nor entertainers/athletes ("screenwriter" is not
-// "writer"; a cyclist with a podcast is not a pundit).
-const CORE = /\b(pundit|political commentator|commentator|columnist|opinion journalist|political theorist|theorist|ideologue|philosopher|economist|political scientist|sociologist|historian|essayist|intellectual|theologian|political strategist|strategist)\b/i;
-const WEAK = /^(writer|author|novelist|journalist|blogger|podcaster|activist|academic|university teacher|professor|political adviser|radio personality)$/i;
-const POLITICIAN = /\b(politician|legislator|diplomat|head of state|minister|mayor|president|judge|jurist|magistrate|military officer)\b/i;
-const ENTERTAINMENT = /\b(actor|actress|singer|musician|rapper|comedian|film director|screenwriter|producer|model|socialite|athlete|cyclist|football|basketball|baseball|boxer|wrestler|wrestling|promoter|racing driver|tennis|astronaut|chef|influencer|youtuber|television personality|reality)\b/i;
-const isIntellectual = (occs: string[]) =>
-  occs.some((o) => CORE.test(o)) ||
-  (occs.some((o) => WEAK.test(o.trim())) && !occs.some((o) => POLITICIAN.test(o)) && !occs.some((o) => ENTERTAINMENT.test(o)));
 const MAX = 12;
 
 /** Runs fn over items with at most n in flight. */
@@ -254,14 +244,17 @@ export const contextJob: Job = {
       const exclude = new Set([g.leader_qid, g.hos_qid, g.hog_qid].filter(Boolean));
       const p = g.party_qid ? party.get(g.party_qid) : undefined;
       const ex = p?.ptwiki ? ptEx.get(wikiTitle(p.ptwiki)) : p?.enwiki ? enEx.get(wikiTitle(p.enwiki)) : undefined;
-      const aff = [...(g.party_qid ? (affiliated.get(g.party_qid)?.values() ?? []) : [])]
-        .filter((r) => !exclude.has(r.qid) && isIntellectual([...r.occs]))
-        .sort((a, b) => b.sl - a.sl)
+      // Scholars before pundits before generic writers; notability breaks ties.
+      const ranked = (rs: Iterable<Raw>) => [...rs].map((r) => ({ r, rank: intellectualRank([...r.occs]) })).filter((x) => x.rank > 0 && !exclude.has(x.r.qid));
+      const aff = ranked(g.party_qid ? (affiliated.get(g.party_qid)?.values() ?? []) : [])
+        .sort((a, b) => b.rank - a.rank || b.r.sl - a.r.sl)
+        .map((x) => x.r)
         .slice(0, MAX);
       const affSet = new Set(aff.map((a) => a.qid));
-      const sh = [...(shared.get(code)?.values() ?? [])]
-        .filter((r) => !exclude.has(r.qid) && !affSet.has(r.qid) && isIntellectual([...r.occs]))
-        .sort((a, b) => b.shared.size - a.shared.size || b.sl - a.sl)
+      const sh = ranked(shared.get(code)?.values() ?? [])
+        .filter((x) => !affSet.has(x.r.qid))
+        .sort((a, b) => b.rank - a.rank || b.r.shared.size - a.r.shared.size || b.r.sl - a.r.sl)
+        .map((x) => x.r)
         .slice(0, MAX);
       const l = g.leader_qid ? leader.get(g.leader_qid) : undefined;
       const values = {
