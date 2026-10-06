@@ -211,7 +211,7 @@ export const scoresJob: Job = {
     for (const batch of chunks(unscored.map((p) => p.wikidataQid!), 200)) {
       const res = await sparql(
         `SELECT ?p ?alLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} } ?p wdt:P1387 ?al .
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`,
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". } }`,
         { ttlHours: 24 * 7 },
       );
       for (const r of res) alignment.set(qid(r.p)!, [...(alignment.get(qid(r.p)!) ?? []), r.alLabel]);
@@ -267,7 +267,7 @@ export const scoresJob: Job = {
     const leaderIdeoQids = [...new Set(leaders.flatMap((l) => (l.ideologies ?? []).map((i) => i.qid)))];
     const enLabel = new Map<string, string>();
     for (const batch of chunks(leaderIdeoQids, 200)) {
-      const res = await sparql(`SELECT ?i ?l WHERE { VALUES ?i { ${batch.map((q) => `wd:${q}`).join(" ")} } ?i rdfs:label ?l FILTER(LANG(?l) = "en") }`, { ttlHours: 24 * 30 });
+      const res = await sparql(`SELECT ?i ?l WHERE { VALUES ?i { ${batch.map((q) => `wd:${q}`).join(" ")} } ?i rdfs:label ?l FILTER(LANG(?l) IN ("en", "mul")) }`, { ttlHours: 24 * 30 });
       for (const r of res) enLabel.set(qid(r.i)!, r.l);
     }
     for (const l of leaders) add("family-label-leader", familyRow({ personId: l.person_id }, (l.ideologies ?? []).map((i) => enLabel.get(i.qid)).filter(Boolean) as string[], l.name));

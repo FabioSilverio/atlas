@@ -33,10 +33,10 @@ async function enrich(people: Map<string, Raw>) {
   for (const batch of chunks([...people.keys()], 150)) {
     const rows = await sparql(
       `SELECT ?p ?pt ?en ?dpt ?den ?img ?occLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} }
-        OPTIONAL { ?p rdfs:label ?pt FILTER(LANG(?pt) = "pt") } OPTIONAL { ?p rdfs:label ?en FILTER(LANG(?en) = "en") }
+        OPTIONAL { ?p rdfs:label ?pt FILTER(LANG(?pt) = "pt") } OPTIONAL { ?p rdfs:label ?en FILTER(LANG(?en) IN ("en", "mul")) }
         OPTIONAL { ?p schema:description ?dpt FILTER(LANG(?dpt) = "pt") } OPTIONAL { ?p schema:description ?den FILTER(LANG(?den) = "en") }
         OPTIONAL { ?p wdt:P18 ?img } OPTIONAL { ?p wdt:P106 ?occ }
-        SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`,
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". } }`,
       { ttlHours: 24 * 14 },
     );
     for (const r of rows) {
@@ -109,7 +109,7 @@ export const contextJob: Job = {
           OPTIONAL { ?p wdt:P1387 ?al } OPTIONAL { ?p wdt:P1142 ?i }
           OPTIONAL { ?ptwiki schema:about ?p ; schema:isPartOf <https://pt.wikipedia.org/> }
           OPTIONAL { ?enwiki schema:about ?p ; schema:isPartOf <https://en.wikipedia.org/> }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en". } }`,
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en,mul". } }`,
         { ttlHours: 24 * 7 },
       );
       for (const r of rows) {
@@ -137,7 +137,7 @@ export const contextJob: Job = {
       const rows = await sparql(
         `SELECT ?p ?k ?v ?vLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} }
           { ?p wdt:P1142 ?v . BIND("i" AS ?k) } UNION { ?p wdt:P737 ?v . BIND("f" AS ?k) }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en". } }`,
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en,mul". } }`,
         { ttlHours: 24 * 7 },
       );
       for (const r of rows) {
@@ -156,7 +156,7 @@ export const contextJob: Job = {
           OPTIONAL { ?p wdt:P18 ?img } OPTIONAL { ?p wdt:P569 ?birth } OPTIONAL { ?p wdt:P106 ?occ }
           OPTIONAL { ?ptwiki schema:about ?p ; schema:isPartOf <https://pt.wikipedia.org/> }
           OPTIONAL { ?enwiki schema:about ?p ; schema:isPartOf <https://en.wikipedia.org/> }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en". } }`,
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en,mul". } }`,
         { ttlHours: 24 * 7 },
       );
       for (const r of rows) {

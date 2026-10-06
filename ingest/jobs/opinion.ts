@@ -70,7 +70,7 @@ async function outletWikidata(name: string, country: string, countryQid: string 
       VALUES ?cls { wd:Q11032 wd:Q1110794 wd:Q1153191 wd:Q17232649 wd:Q1002697 wd:Q1193236 }
       ?o wdt:P31/wdt:P279? ?cls .
       OPTIONAL { ?o wdt:P1387 ?al }
-      SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,en". } }`,
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,en,mul". } }`,
     { ttlHours: 24 * 30 },
   );
   if (!rows.length) return null;

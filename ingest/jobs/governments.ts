@@ -34,14 +34,14 @@ SELECT ?country ?role ?person ?personLabel ?personEn ?start ?rank ?party ?partyL
   FILTER(?rank != wikibase:DeprecatedRank)
   FILTER NOT EXISTS { ?st pq:P582 ?end }
   OPTIONAL { ?st pq:P580 ?start }
-  OPTIONAL { ?person rdfs:label ?personEn FILTER(LANG(?personEn) = "en") }
+  OPTIONAL { ?person rdfs:label ?personEn FILTER(LANG(?personEn) IN ("en", "mul")) }
   OPTIONAL {
     ?person p:P102 ?ps . ?ps ps:P102 ?party ; wikibase:rank ?prank .
     FILTER(?prank != wikibase:DeprecatedRank)
     FILTER NOT EXISTS { ?ps pq:P582 ?pend }
     OPTIONAL { ?ps pq:P580 ?pstart }
     FILTER NOT EXISTS { ?party wdt:P31 wd:Q24649 }  # European-level parties (EPP, PES…) are not national parties
-    OPTIONAL { ?party rdfs:label ?partyEn FILTER(LANG(?partyEn) = "en") }
+    OPTIONAL { ?party rdfs:label ?partyEn FILTER(LANG(?partyEn) IN ("en", "mul")) }
     OPTIONAL { ?party wdt:P1813 ?partyShort }
     OPTIONAL { ?partyWiki schema:about ?party ; schema:isPartOf <https://en.wikipedia.org/> }
   }

@@ -1,6 +1,7 @@
 import { inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db/client";
 import { countriesByQid } from "../lib/countries";
+import { fetchJson } from "../lib/http";
 import { touchSource, type Job } from "../lib/job";
 import { log } from "../lib/log";
 import { qid, sparql } from "../lib/sparql";
@@ -146,7 +147,7 @@ export const thinkersJob: Job = {
       const basic = await sparql(
         `SELECT ?p ?pt ?en ?dpt ?den ?birth ?death ?img ?ptwiki ?enwiki WHERE { VALUES ?p { ${values} }
           OPTIONAL { ?p rdfs:label ?pt FILTER(LANG(?pt) = "pt") }
-          OPTIONAL { ?p rdfs:label ?en FILTER(LANG(?en) = "en") }
+          OPTIONAL { ?p rdfs:label ?en FILTER(LANG(?en) IN ("en", "mul")) }
           OPTIONAL { ?p schema:description ?dpt FILTER(LANG(?dpt) = "pt") }
           OPTIONAL { ?p schema:description ?den FILTER(LANG(?den) = "en") }
           OPTIONAL { ?p wdt:P569 ?birth } OPTIONAL { ?p wdt:P570 ?death } OPTIONAL { ?p wdt:P18 ?img }
@@ -172,12 +173,38 @@ export const thinkersJob: Job = {
           UNION { ?p wdt:P1142 ?v . BIND("ideologies" AS ?k) } UNION { ?p wdt:P800 ?v . BIND("works" AS ?k) }
           UNION { ?p wdt:P166 ?v . ?v wikibase:sitelinks ?asl . FILTER(?asl >= 20) BIND("awards" AS ?k) }
           UNION { ?p wdt:P106 ?v . BIND("occupations" AS ?k) }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en". } }`,
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en,mul". } }`,
         { ttlHours: 24 * 30 },
       );
       for (const r of multi) {
         if (!r.vLabel || /^Q\d+$/.test(r.vLabel)) continue;
         get(qid(r.p)!)[r.k as "fields"].set(qid(r.v)!, r.vLabel);
+      }
+    }
+
+    // 4b. Career politicians who qualify only as "political writer"/"essayist"
+    // (memoirs, campaign books) are not thinkers: drop them.
+    const WEAK_ONLY = new Set(["Q15958642", "Q11774202"]);
+    // Occupation labels come back in Portuguese when available, so match both languages.
+    const POL = /politician|statesperson|head of state|head of government|president|prime minister|diplomat|monarch|pol[ií]tic[oa]|estadista|chefe de (estado|governo)|presidente|primeir[oa]-ministr[oa]|diplomata|monarca/i;
+    for (let k = selected.length - 1; k >= 0; k--) {
+      const q = selected[k];
+      const occ = cand.get(q)?.occ ?? new Set<string>();
+      const labels = [...(det.get(q)?.occupations.values() ?? [])];
+      if ([...occ].every((o) => WEAK_ONLY.has(o)) && labels.some((l) => POL.test(l))) selected.splice(k, 1);
+    }
+
+    // 4c. Names that came back without a label (Wikidata Query Service hiccups): ask the Wikidata API.
+    const unnamed = selected.filter((q) => !det.get(q)?.label && !det.get(q)?.labelEn);
+    for (const batch of chunks(unnamed, 50)) {
+      const res = await fetchJson<{ entities?: Record<string, { labels?: Record<string, { value: string }> }> }>(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels&languages=pt|pt-br|en|mul&ids=${batch.join("|")}`,
+        { ttlHours: 24 * 7 },
+      );
+      for (const q of batch) {
+        const l = res.entities?.[q]?.labels;
+        const name = l?.pt?.value ?? l?.["pt-br"]?.value ?? l?.en?.value ?? l?.mul?.value;
+        if (name) get(q).label = name;
       }
     }
 
@@ -196,8 +223,12 @@ export const thinkersJob: Job = {
     // thinkers we have not described yet, so the weekly refresh fits a serverless run.
     const known = new Map(
       (
-        (await db.execute(sql`select p.wikidata_qid as qid, t.summary, t.summary_url, p.image_url, p.image_license, p.image_attribution
-          from thinkers t join people p on p.id = t.person_id`)) as unknown as { qid: string; summary: string | null; summary_url: string | null; image_url: string | null; image_license: string | null; image_attribution: string | null }[]
+        (await db.execute(sql`select p.wikidata_qid as qid, t.summary, t.summary_url, p.image_url, p.image_license, p.image_attribution,
+            t.theses, t.concepts, t.theses_model, t.theses_source, t.theses_at
+          from thinkers t join people p on p.id = t.person_id`)) as unknown as {
+          qid: string; summary: string | null; summary_url: string | null; image_url: string | null; image_license: string | null; image_attribution: string | null;
+          theses: string[] | null; concepts: string[] | null; theses_model: string | null; theses_source: string | null; theses_at: string | null;
+        }[]
       ).map((r) => [r.qid, r]),
     );
     const needText = selected.filter((q) => !known.get(q)?.summary);
@@ -233,7 +264,8 @@ export const thinkersJob: Job = {
         .onConflictDoUpdate({
           target: schema.people.wikidataQid,
           set: {
-            name: sql`excluded.name`,
+            // Never replace a real name with a bare QID.
+            name: sql`case when excluded.name ~ '^Q[0-9]+$' then ${schema.people.name} else excluded.name end`,
             birthDate: sql`excluded.birth_date`,
             deathDate: sql`excluded.death_date`,
             birthCountryCode: sql`coalesce(excluded.birth_country_code, ${schema.people.birthCountryCode})`,
@@ -273,6 +305,12 @@ export const thinkersJob: Job = {
         birthYear: year(d?.birth),
         deathYear: year(d?.death),
         primaryCountry: primary(q),
+        // Theses written by the local model survive the weekly rebuild.
+        theses: k?.theses ?? null,
+        concepts: k?.concepts ?? null,
+        thesesModel: k?.theses_model ?? null,
+        thesesSource: k?.theses_source ?? null,
+        thesesAt: k?.theses_at ? new Date(k.theses_at) : null,
         sourceId: "wikidata",
         sourceUrl: `https://www.wikidata.org/wiki/${q}`,
         updatedAt: new Date(),

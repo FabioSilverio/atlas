@@ -20,7 +20,7 @@ export const ideologiesJob: Job = {
     for (const batch of chunks([...partyByQid.keys()], 200)) {
       const rows = await sparql(
         `SELECT ?p ?i ?iLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} } ?p wdt:P1142 ?i .
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en". } }`,
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en,mul". } }`,
         { ttlHours: 24 * 7 },
       );
       for (const r of rows) {
@@ -38,7 +38,7 @@ export const ideologiesJob: Job = {
     for (const batch of chunks(all, 200)) {
       const rows = await sparql(
         `SELECT ?i ?pt ?en ?dpt ?den ?ptwiki ?enwiki WHERE { VALUES ?i { ${batch.map((q) => `wd:${q}`).join(" ")} }
-          OPTIONAL { ?i rdfs:label ?pt FILTER(LANG(?pt) = "pt") } OPTIONAL { ?i rdfs:label ?en FILTER(LANG(?en) = "en") }
+          OPTIONAL { ?i rdfs:label ?pt FILTER(LANG(?pt) = "pt") } OPTIONAL { ?i rdfs:label ?en FILTER(LANG(?en) IN ("en", "mul")) }
           OPTIONAL { ?i schema:description ?dpt FILTER(LANG(?dpt) = "pt") } OPTIONAL { ?i schema:description ?den FILTER(LANG(?den) = "en") }
           OPTIONAL { ?ptwiki schema:about ?i ; schema:isPartOf <https://pt.wikipedia.org/> }
           OPTIONAL { ?enwiki schema:about ?i ; schema:isPartOf <https://en.wikipedia.org/> } }`,

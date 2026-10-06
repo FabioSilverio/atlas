@@ -29,7 +29,7 @@ async function adjectives(countries: { code: string; qid: string | null; nameEn:
   for (const batch of chunks([...byQid.keys()], 150)) {
     const rows = await sparql(
       `SELECT ?c ?d ?en WHERE { VALUES ?c { ${batch.map((q) => `wd:${q}`).join(" ")} }
-        OPTIONAL { ?c wdt:P1549 ?d FILTER(LANG(?d) = "en") } OPTIONAL { ?c rdfs:label ?en FILTER(LANG(?en) = "en") } }`,
+        OPTIONAL { ?c wdt:P1549 ?d FILTER(LANG(?d) = "en") } OPTIONAL { ?c rdfs:label ?en FILTER(LANG(?en) IN ("en", "mul")) } }`,
       { ttlHours: 24 * 30 },
     );
     for (const r of rows) {
