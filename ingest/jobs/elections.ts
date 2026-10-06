@@ -6,6 +6,7 @@ import { loadPartyFactsCore } from "../lib/datasets";
 import { fetchJson } from "../lib/http";
 import { findElectionInfoboxes, interpret, type ParsedElection } from "../lib/infobox";
 import { touchSource, type Job } from "../lib/job";
+import { getState, setState } from "../lib/state";
 import { log } from "../lib/log";
 import { loadPartyScores } from "../lib/party-scores";
 import { qid, sparql } from "../lib/sparql";
@@ -19,14 +20,6 @@ const budgetMs = () => (process.env.VERCEL ? 200_000 : Number.POSITIVE_INFINITY)
 
 type Crosswalk = Record<string, { partyfacts_id: number; note: string }>;
 const crosswalk = electionCrosswalk as unknown as Crosswalk;
-
-async function getState<T>(key: string, fallback: T): Promise<T> {
-  const [r] = await db.select().from(schema.jobState).where(eq(schema.jobState.key, key));
-  return (r?.value as T) ?? fallback;
-}
-async function setState(key: string, value: unknown) {
-  await db.insert(schema.jobState).values({ key, value }).onConflictDoUpdate({ target: schema.jobState.key, set: { value, updatedAt: new Date() } });
-}
 
 /** English adjectives/names Wikipedia uses in election titles ("Brazilian", "United Kingdom"). */
 async function adjectives(countries: { code: string; qid: string | null; nameEn: string }[]) {

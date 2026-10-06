@@ -14,9 +14,10 @@ import { historyJob } from "./jobs/history";
 import { contextJob } from "./jobs/context";
 import { opinionJob, themesJob } from "./jobs/opinion";
 import { searchJob } from "./jobs/search";
+import { newsJob } from "./jobs/news";
 
 // Order matters: each job reads what the previous ones wrote.
-export const JOBS: Job[] = [sourcesJob, geoJob, regimesJob, governmentsJob, partiesJob, scoresJob, deriveJob, nobelJob, thinkersJob, ideologiesJob, contextJob, electionsJob, historyJob, opinionJob, themesJob, searchJob];
+export const JOBS: Job[] = [sourcesJob, geoJob, regimesJob, governmentsJob, partiesJob, scoresJob, deriveJob, nobelJob, thinkersJob, ideologiesJob, contextJob, electionsJob, historyJob, opinionJob, newsJob, themesJob, searchJob];
 
 // Named groups. `geo` writes public/ and therefore only runs locally / in CI, never on Vercel.
 export const GROUPS: Record<string, string[]> = {
@@ -28,7 +29,7 @@ export const GROUPS: Record<string, string[]> = {
   thinkers: ["thinkers", "ideologies"],
   context: ["context", "search"],
   elections: ["elections", "history", "search"],
-  opinion: ["opinion", "themes", "search"],
+  opinion: ["opinion", "news", "themes", "search"],
 };
 
 export function resolveJobs(names: string[]): Job[] {

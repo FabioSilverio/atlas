@@ -49,6 +49,23 @@ async function enrich(people: Map<string, Raw>) {
   }
 }
 
+function leaderBio(
+  b: { desc?: string; img?: string; birth?: string; ptwiki?: string; enwiki?: string; occs: Set<string> } | undefined,
+  pt: Map<string, { extract: string; url: string }>,
+  en: Map<string, { extract: string; url: string }>,
+) {
+  if (!b) return {};
+  const ex = b.ptwiki ? pt.get(wikiTitle(b.ptwiki)) : b.enwiki ? en.get(wikiTitle(b.enwiki)) : undefined;
+  return {
+    description: b.desc ?? null,
+    imageUrl: b.img ?? null,
+    birthYear: b.birth && /^\d{4}/.test(b.birth) ? Number(b.birth.slice(0, 4)) : null,
+    occupations: [...b.occs].slice(0, 6),
+    summary: ex?.extract ?? null,
+    summaryUrl: ex?.url ?? null,
+  };
+}
+
 const toPerson = (r: Raw): ContextPerson => ({
   qid: r.qid,
   name: r.name,
@@ -129,6 +146,34 @@ export const contextJob: Job = {
         leader.set(qid(r.p)!, e);
       }
     }
+
+    // 2b. Who the leader is: description, portrait, occupations and the Wikipedia lead.
+    const bio = new Map<string, { desc?: string; img?: string; birth?: string; ptwiki?: string; enwiki?: string; occs: Set<string> }>();
+    for (const batch of chunks(leaderQids, 150)) {
+      const rows = await sparql(
+        `SELECT ?p ?dpt ?den ?img ?birth ?ptwiki ?enwiki ?occLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} }
+          OPTIONAL { ?p schema:description ?dpt FILTER(LANG(?dpt) = "pt") } OPTIONAL { ?p schema:description ?den FILTER(LANG(?den) = "en") }
+          OPTIONAL { ?p wdt:P18 ?img } OPTIONAL { ?p wdt:P569 ?birth } OPTIONAL { ?p wdt:P106 ?occ }
+          OPTIONAL { ?ptwiki schema:about ?p ; schema:isPartOf <https://pt.wikipedia.org/> }
+          OPTIONAL { ?enwiki schema:about ?p ; schema:isPartOf <https://en.wikipedia.org/> }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "pt,pt-br,en". } }`,
+        { ttlHours: 24 * 7 },
+      );
+      for (const r of rows) {
+        const e = bio.get(qid(r.p)!) ?? { occs: new Set<string>() };
+        e.desc ??= r.dpt ?? r.den;
+        e.img ??= r.img ? `https://commons.wikimedia.org/wiki/Special:FilePath/${r.img.split("/").pop()}?width=200` : undefined;
+        e.birth ??= r.birth;
+        e.ptwiki ??= r.ptwiki;
+        e.enwiki ??= r.enwiki;
+        if (r.occLabel && !/^Q\d+$/.test(r.occLabel)) e.occs.add(r.occLabel);
+        bio.set(qid(r.p)!, e);
+      }
+    }
+    const [leaderPt, leaderEn] = await Promise.all([
+      wikiExtracts("pt", [...bio.values()].map((b) => b.ptwiki).filter(Boolean).map((u) => wikiTitle(u!)), 5),
+      wikiExtracts("en", [...bio.values()].filter((b) => !b.ptwiki && b.enwiki).map((b) => wikiTitle(b.enwiki!)), 5),
+    ]);
 
     // 3. Living, notable members of the ruling party (P102). One query per party
     // (big parties time out when batched), a few in parallel, failures skipped.
@@ -242,6 +287,7 @@ export const contextJob: Job = {
                 name: g.leader_name ?? g.leader_qid,
                 ideologies: [...(l?.ideologies ?? new Map())].map(([q, label]) => ({ qid: q, label })),
                 influencedBy: [...(l?.influencedBy ?? new Map())].map(([q, label]) => ({ qid: q, label })),
+                ...leaderBio(bio.get(g.leader_qid), leaderPt, leaderEn),
               }
             : null,
         affiliated: aff.map((r) => toPerson({ ...r, shared: new Set() })),

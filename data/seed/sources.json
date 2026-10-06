@@ -162,6 +162,15 @@
     "version": "qwen2.5:3b"
   },
   {
+    "id": "google-news",
+    "name": "Google News — busca por país",
+    "publisher": "Google",
+    "url": "https://news.google.com",
+    "license": "Somente metadados (título, veículo de origem, data, link)",
+    "citation": "Para países sem seção de opinião monitorada: busca por análise, opinião e editoriais sobre o país nos últimos 14 dias.",
+    "version": "ao vivo"
+  },
+  {
     "id": "atlas-curation",
     "name": "Curadoria editorial ATLAS",
     "publisher": "ATLAS",

@@ -20,10 +20,11 @@ export type ThinkerCard = {
   occupations: Ref[];
   sitelinks: number;
   country: string | null;
+  theses: string[] | null;
 };
 
-const CARD = sql`p.wikidata_qid as qid, p.name, t.description, p.image_url, t.birth_year, t.death_year, t.fields, t.occupations, t.sitelinks, t.primary_country`;
-type CardRow = { qid: string; name: string; description: string | null; image_url: string | null; birth_year: number | null; death_year: number | null; fields: Ref[]; occupations: Ref[]; sitelinks: number; primary_country: string | null };
+const CARD = sql`p.wikidata_qid as qid, p.name, t.description, p.image_url, t.birth_year, t.death_year, t.fields, t.occupations, t.sitelinks, t.primary_country, t.theses`;
+type CardRow = { qid: string; name: string; description: string | null; image_url: string | null; birth_year: number | null; death_year: number | null; fields: Ref[]; occupations: Ref[]; sitelinks: number; primary_country: string | null; theses: string[] | null };
 const card = (r: CardRow): ThinkerCard => ({
   qid: r.qid,
   name: r.name,
@@ -35,6 +36,7 @@ const card = (r: CardRow): ThinkerCard => ({
   occupations: r.occupations ?? [],
   sitelinks: r.sitelinks,
   country: r.primary_country?.trim() ?? null,
+  theses: r.theses ?? null,
 });
 
 export const getCountryThinkers = unstable_cache(
@@ -50,7 +52,7 @@ export const getCountryThinkers = unstable_cache(
       join thinkers mine on mine.person_id = i.influenced_id and mine.primary_country = ${code}
       join thinkers t on t.person_id = i.influencer_id and coalesce(t.primary_country, '') <> ${code}
       join people p on p.id = t.person_id
-      group by p.wikidata_qid, p.name, t.description, p.image_url, t.birth_year, t.death_year, t.fields, t.occupations, t.sitelinks, t.primary_country
+      group by p.wikidata_qid, p.name, t.description, p.image_url, t.birth_year, t.death_year, t.fields, t.occupations, t.sitelinks, t.primary_country, t.theses
       order by cites desc, t.sitelinks desc limit 10`);
     return { total: n, thinkers: list.map(card), foreign: foreign.map((f) => ({ ...card(f), cites: f.cites })) };
   },
@@ -75,6 +77,10 @@ export const getInfluenceFlows = unstable_cache(
 );
 
 export type ThinkerPage = ThinkerCard & {
+  concepts: string[];
+  thesesSource: string | null;
+  thesesAt: string | null;
+  thesesModel: string | null;
   summary: string | null;
   summaryUrl: string | null;
   imageLicense: string | null;
@@ -93,8 +99,9 @@ export type ThinkerPage = ThinkerCard & {
 
 export const getThinker = unstable_cache(
   async (qid: string): Promise<ThinkerPage | null> => {
-    const [r] = await rows<CardRow & { summary: string | null; summary_url: string | null; image_license: string | null; image_attribution: string | null; movements: Ref[]; notable_works: Ref[]; awards: Ref[]; person_id: number; updated_at: string }>(sql`
-      select ${CARD}, t.summary, t.summary_url, p.image_license, p.image_attribution, t.movements, t.notable_works, t.awards, t.person_id, t.updated_at
+    const [r] = await rows<CardRow & { summary: string | null; summary_url: string | null; image_license: string | null; image_attribution: string | null; movements: Ref[]; notable_works: Ref[]; awards: Ref[]; person_id: number; updated_at: string; concepts: string[] | null; theses_source: string | null; theses_at: string | null; theses_model: string | null }>(sql`
+      select ${CARD}, t.summary, t.summary_url, p.image_license, p.image_attribution, t.movements, t.notable_works, t.awards, t.person_id, t.updated_at,
+        t.concepts, t.theses_source, t.theses_at, t.theses_model
       from thinkers t join people p on p.id = t.person_id where p.wikidata_qid = ${qid}`);
     if (!r) return null;
     const [countries, by, of, ideologies, nobel, mentions] = await Promise.all([
@@ -112,6 +119,10 @@ export const getThinker = unstable_cache(
     ]);
     return {
       ...card(r),
+      concepts: r.concepts ?? [],
+      thesesSource: r.theses_source,
+      thesesAt: r.theses_at ? new Date(r.theses_at).toISOString() : null,
+      thesesModel: r.theses_model,
       summary: r.summary,
       summaryUrl: r.summary_url,
       imageLicense: r.image_license,
@@ -286,7 +297,20 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 export type GovContext = {
   country: string;
-  leader: { name: string; qid: string | null; since: string | null; role: string; ideologies: Ref[]; influencedBy: Ref[] } | null;
+  leader: {
+    name: string;
+    qid: string | null;
+    since: string | null;
+    role: string;
+    ideologies: Ref[];
+    influencedBy: Ref[];
+    description: string | null;
+    summary: string | null;
+    summaryUrl: string | null;
+    imageUrl: string | null;
+    birthYear: number | null;
+    occupations: string[];
+  } | null;
   party: {
     qid: string;
     name: string;
@@ -319,7 +343,7 @@ export const getGovernmentContext = unstable_cache(
       left join people pe on pe.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
       where g.country_code = ${code} and g.ended_on is null`);
     if (!g) return null;
-    const [ctx] = await rows<{ party: GovContext["party"]; leader: { ideologies: Ref[]; influencedBy: Ref[] } | null; affiliated: GovContext["affiliated"]; shared_ideology: GovContext["sharedIdeology"]; updated_at: string }>(sql`
+    const [ctx] = await rows<{ party: GovContext["party"]; leader: import("@/lib/db/schema").GovernmentLeader | null; affiliated: GovContext["affiliated"]; shared_ideology: GovContext["sharedIdeology"]; updated_at: string }>(sql`
       select party, leader, affiliated, shared_ideology, updated_at from government_context where country_code = ${code}`);
     const { elections } = await getCountryElections(code);
 
@@ -368,7 +392,22 @@ export const getGovernmentContext = unstable_cache(
       : [];
     return {
       country: code,
-      leader: g.name ? { name: g.name, qid: g.qid, since: g.since ? new Date(g.since).toISOString().slice(0, 10) : null, role: g.role, ideologies: ctx?.leader?.ideologies ?? [], influencedBy: ctx?.leader?.influencedBy ?? [] } : null,
+      leader: g.name
+        ? {
+            name: g.name,
+            qid: g.qid,
+            since: g.since ? new Date(g.since).toISOString().slice(0, 10) : null,
+            role: g.role,
+            ideologies: ctx?.leader?.ideologies ?? [],
+            influencedBy: ctx?.leader?.influencedBy ?? [],
+            description: ctx?.leader?.description ?? null,
+            summary: ctx?.leader?.summary ?? null,
+            summaryUrl: ctx?.leader?.summaryUrl ?? null,
+            imageUrl: ctx?.leader?.imageUrl ?? null,
+            birthYear: ctx?.leader?.birthYear ?? null,
+            occupations: ctx?.leader?.occupations ?? [],
+          }
+        : null,
       party: ctx?.party ?? (g.party_name && g.party_qid ? { qid: g.party_qid, name: g.party_name, founded: null, founders: [], chair: null, alignment: [], ideologies: [], summary: null, summaryUrl: null } : null),
       rise,
       latest: elections[0] ?? null,

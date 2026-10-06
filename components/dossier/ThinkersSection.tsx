@@ -26,6 +26,7 @@ export async function ThinkersSection({ code }: { code: string }) {
                       <span className="shrink-0 font-mono text-[10.5px] text-muted">{years(t)}</span>
                     </div>
                     <div className="truncate text-[11.5px] text-muted">{t.fields.slice(0, 3).map((f) => f.label).join(" · ") || t.description}</div>
+                    {t.theses?.[0] && <div className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-ink-2">“{t.theses[0]}”</div>}
                   </div>
                 </Link>
               </li>

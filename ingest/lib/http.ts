@@ -25,6 +25,7 @@ const HOST_INTERVAL_MS: Record<string, number> = {
   "en.wikipedia.org": 1000,
   "pt.wikipedia.org": 1000,
   "commons.wikimedia.org": 1000,
+  "news.google.com": 1500,
   default: 500,
 };
 const lastHit = new Map<string, number>();

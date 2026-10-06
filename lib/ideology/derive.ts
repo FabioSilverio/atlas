@@ -1,7 +1,7 @@
 import type { Dimension } from "./normalize";
 
 export type Confidence = "A" | "B" | "C" | "D";
-export type Method = "expert_survey" | "manifesto" | "leader_coding" | "leader_party_proxy" | "editorial_estimate";
+export type Method = "expert_survey" | "manifesto" | "leader_coding" | "leader_party_proxy" | "alignment_label" | "family_label" | "editorial_estimate";
 
 export type ScoreInput = {
   id: number;
@@ -33,7 +33,7 @@ export type DeriveInput = {
 export type DerivationInput = ScoreInput & { partyName?: string | null };
 
 export type Derivation = {
-  rule: "party_of_chief_executive" | "leader_coding" | "party_proxy" | "none";
+  rule: "party_of_chief_executive" | "leader_coding" | "party_proxy" | "label_estimate" | "none";
   explanation: string;
   chosen: DerivationInput | null;
   alternatives: DerivationInput[];
@@ -66,6 +66,7 @@ export const SOURCE_SHORT: Record<string, string> = {
   parlgov: "ParlGov",
   "gps-2019": "Global Party Survey 2019",
   "herre-gli": "Herre (2023)",
+  wikidata: "Wikidata (rótulo)",
   "atlas-curation": "Curadoria ATLAS",
 };
 
@@ -159,7 +160,34 @@ export function deriveGovernmentPosition(i: DeriveInput): DeriveResult {
     };
   }
 
-  // 4. Nothing usable: say exactly why.
+  // 4. Estimates from documented labels: declared alignment, then ideology family (party, then the leader).
+  const labelled = [
+    ...ofDim.filter((s) => s.partyId != null && partyOrder.has(s.partyId) && s.method === "alignment_label").sort((a, b) => partyOrder.get(a.partyId!)! - partyOrder.get(b.partyId!)!),
+    ...ofDim.filter((s) => s.partyId != null && partyOrder.has(s.partyId) && s.method === "family_label").sort((a, b) => partyOrder.get(a.partyId!)! - partyOrder.get(b.partyId!)!),
+    ...ofDim.filter((s) => s.personId != null && s.personId === i.chiefPersonId && s.method === "family_label"),
+  ];
+  if (labelled.length) {
+    const chosen = labelled[0];
+    const who = chosen.partyId ? `do partido ${partyName.get(chosen.partyId)}` : `de ${i.chiefPersonName ?? "o chefe do executivo"} (sem partido)`;
+    return {
+      valueNorm: chosen.valueNorm,
+      confidence: "D",
+      isEstimate: true,
+      derivation: {
+        rule: "label_estimate",
+        explanation: `Estimativa: nenhuma base acadêmica mede a posição ${who}. Critério: ${chosen.notes}`,
+        chosen: withName(chosen),
+        alternatives: labelled.slice(1).map(withName),
+        caveats: [
+          chosen.method === "alignment_label"
+            ? "Rótulo editorial do Wikidata, não medição; serve para situar o governo até haver survey."
+            : "Posição típica da família ideológica, não do partido em si.",
+        ],
+      },
+    };
+  }
+
+  // 5. Nothing usable: say exactly why.
   let why: string;
   if (!i.chiefParties.length)
     why = `${i.chiefPersonName ?? "O chefe do executivo"} não tem filiação partidária registrada no Wikidata (independente, monarca, militar ou dado ausente), e não há codificação individual em Herre (2023).`;

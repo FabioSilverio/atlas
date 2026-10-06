@@ -59,6 +59,7 @@ export async function OpinionSection({ code }: { code: string }) {
               <a href={v.url} target="_blank" rel="noreferrer" className="truncate text-ink hover:text-cyan">
                 {v.name}
                 {v.kind === "politics" && <span className="ml-1 font-mono text-[9.5px] text-muted">(feed de política)</span>}
+                {v.kind === "aggregator" && <span className="ml-1 font-mono text-[9.5px] text-muted">(análises e opinião sobre o país, vários veículos)</span>}
               </a>
               <span className="shrink-0 font-mono text-[10.5px] text-muted" title={v.alignment ? "Orientação política registrada no Wikidata (P1387)" : "Sem orientação registrada no Wikidata"}>
                 {v.alignment ?? "orientação não registrada"} · {v.articles}

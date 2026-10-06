@@ -91,8 +91,11 @@ export default async function Metodologia() {
             ))}
           </dl>
           <p>
-            No mapa, a confiança vira opacidade, e estimativas (D) e países sem dado recebem hachura. A estimativa D tem um único critério automático: o
-            partido não tem survey, mas um líder anterior do mesmo partido foi codificado por Herre (2023).
+            No mapa, a confiança vira opacidade, e estimativas (D) e países sem dado recebem hachura. Estimativas D, em ordem, quando nenhuma base acadêmica
+            mede o partido: (1) um líder anterior do mesmo partido foi codificado por Herre (2023); (2) a posição política declarada do partido no Wikidata
+            (P1387: centro-esquerda −0,3, esquerda −0,6, extrema esquerda −0,85, e o simétrico à direita); (3) os rótulos ideológicos do partido (P1142), ou do
+            próprio líder quando não há partido, indicam uma família partidária (social-democrata, conservadora, direita radical…), e usamos a posição média
+            dessa família entre os partidos do ParlGov. Líderes sem partido e sem rótulos (monarcas, juntas militares, independentes) ficam sem posição.
           </p>
         </Section>
 
@@ -133,9 +136,14 @@ export default async function Metodologia() {
 
         <Section n="7" title="Pensadores">
           <p>
+            As principais teses e os conceitos-chave de cada pensador são sintetizados pela IA local a partir das seções sobre pensamento e obra do verbete da
+            Wikipédia (em português ou, se curto, em inglês), com link para a fonte. É resumo automático: deve ser conferido antes de citado.
+          </p>
+          <p>
             Pessoas do Wikidata com ocupação de filósofo, economista, sociólogo, cientista político, antropólogo, escritor político, historiador ou ensaísta, acima de um
             piso de notabilidade (número de edições da Wikipédia), até 40 por país. País = cidadania que coincide com o local de nascimento, senão a primeira
-            cidadania, senão o país de nascimento (fronteiras atuais). Influências: Wikidata P737. Retratos do Wikimedia Commons com autor e licença.
+            cidadania, senão o país de nascimento (fronteiras atuais). Países com menos de 10 nomes recebem uma busca ampliada (escritores, poetas, juristas,
+            teólogos, jornalistas, linguistas e educadores com cidadania do país, piso menor de notabilidade). Influências: Wikidata P737. Retratos do Wikimedia Commons com autor e licença.
           </p>
         </Section>
 
@@ -150,8 +158,9 @@ export default async function Metodologia() {
 
         <Section n="9" title="Debate de opinião e IA local">
           <p>
-            Monitoramos feeds RSS das seções de opinião dos principais veículos (ou de política, quando não há feed de opinião, sinalizado). Guardamos só
-            título, autor, veículo, data e link, nunca o texto. A orientação editorial vem do Wikidata (P1387) quando registrada.
+            Monitoramos feeds RSS das seções de opinião dos principais veículos (ou de política, quando não há feed de opinião, sinalizado). Para os demais
+            países, buscamos no Google News análises, opiniões e editoriais sobre o país nos últimos 14 dias (vários veículos, sinalizado como agregador).
+            Guardamos só título, autor/veículo, data e link, nunca o texto. A orientação editorial vem do Wikidata (P1387) quando registrada.
           </p>
           <p>
             Resumos, temas e teses são produzidos por um modelo de linguagem aberto e gratuito (Qwen 2.5, licença Apache 2.0) rodando via Ollama no GitHub Actions a

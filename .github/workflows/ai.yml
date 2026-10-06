@@ -11,7 +11,7 @@ on:
     inputs:
       limit:
         description: "máximo de colunas nesta execução"
-        default: "80"
+        default: "60"
 
 permissions:
   contents: read
@@ -24,7 +24,7 @@ concurrency:
 jobs:
   summarise:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 200
     env:
       ATLAS_URL: https://atlas-six-pied.vercel.app
       OLLAMA_MODEL: qwen2.5:3b
@@ -49,11 +49,12 @@ jobs:
           ollama serve > /tmp/ollama.log 2>&1 &
           for i in $(seq 1 30); do curl -s http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 1; done
           ollama pull "$OLLAMA_MODEL"
-      - name: Resumir colunas e extrair teses
+      - name: Resumir colunas e extrair teses (colunas e pensadores)
         run: node scripts/ai-worker.mjs
         env:
-          AI_LIMIT: ${{ inputs.limit || '80' }}
-          AI_DEADLINE_MIN: "150"
+          AI_LIMIT: ${{ inputs.limit || '60' }}
+          THINKER_LIMIT: "300"
+          AI_DEADLINE_MIN: "170"
       - name: Recalcular temas
         if: always()
         run: |

@@ -74,6 +74,42 @@ export default async function ThinkerPage({ params }: PageProps<"/pensador/[qid]
         </Section>
       )}
 
+      <Section title="Principais teses" aside={<span className="font-mono text-[10.5px] text-muted">IA local · a partir da Wikipédia</span>}>
+        {t.theses?.length ? (
+          <>
+            <ol className="space-y-2.5">
+              {t.theses.map((s, i) => (
+                <li key={i} className="flex gap-3 text-[15px] leading-relaxed text-ink">
+                  <span className="mt-0.5 font-mono text-[11px] text-cyan">{String(i + 1).padStart(2, "0")}</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+            {t.concepts.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <span className="mr-1 text-[12px] text-muted">Conceitos-chave:</span>
+                {t.concepts.map((c) => (
+                  <span key={c} className="border border-cyan-dim/60 px-1.5 py-0.5 text-[12.5px] text-ink-2">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-[11px] leading-snug text-muted">
+              Síntese gerada pelo modelo aberto {t.thesesModel ?? "local"} a partir do{" "}
+              <a href={t.thesesSource ?? "#"} target="_blank" rel="noreferrer" className="underline">
+                verbete da Wikipédia
+              </a>
+              {t.thesesAt ? ` em ${fmtDate(t.thesesAt)}` : ""}. É um resumo automático: confira na fonte antes de citar.
+            </p>
+          </>
+        ) : (
+          <p className="text-[13px] text-muted">
+            Em processamento: a IA local está extraindo as teses dos pensadores em ordem de notabilidade (a cada 4 horas). Enquanto isso, veja a biografia e as obras.
+          </p>
+        )}
+      </Section>
+
       <Section title="Ideias centrais">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

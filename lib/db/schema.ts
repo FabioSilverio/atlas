@@ -269,6 +269,12 @@ export const thinkers = pgTable(
     birthYear: integer("birth_year"),
     deathYear: integer("death_year"),
     primaryCountry: char("primary_country", { length: 3 }),
+    // Central theses and key concepts, written by the local model from the Wikipedia article.
+    theses: jsonb("theses").$type<string[]>(),
+    concepts: jsonb("concepts").$type<string[]>(),
+    thesesModel: text("theses_model"),
+    thesesSource: text("theses_source"),
+    thesesAt: timestamp("theses_at", { withTimezone: true }),
     ...provenance,
   },
   (t) => [index("thinkers_country_idx").on(t.primaryCountry), index("thinkers_sitelinks_idx").on(t.sitelinks)],
@@ -397,6 +403,18 @@ export type ContextPerson = {
   sitelinks: number;
   shared?: string[]; // ideology labels shared with the party/leader
 };
+export type GovernmentLeader = {
+  qid: string;
+  name: string;
+  ideologies: { qid: string; label: string }[];
+  influencedBy: { qid: string; label: string }[];
+  description?: string | null;
+  summary?: string | null;
+  summaryUrl?: string | null;
+  imageUrl?: string | null;
+  birthYear?: number | null;
+  occupations?: string[];
+};
 export const governmentContext = pgTable("government_context", {
   countryCode: char("country_code", { length: 3 }).primaryKey(),
   party: jsonb("party").$type<{
@@ -410,7 +428,7 @@ export const governmentContext = pgTable("government_context", {
     summary: string | null;
     summaryUrl: string | null;
   } | null>(),
-  leader: jsonb("leader").$type<{ qid: string; name: string; ideologies: { qid: string; label: string }[]; influencedBy: { qid: string; label: string }[] } | null>(),
+  leader: jsonb("leader").$type<GovernmentLeader | null>(),
   affiliated: jsonb("affiliated").$type<ContextPerson[]>().notNull().default([]),
   sharedIdeology: jsonb("shared_ideology").$type<ContextPerson[]>().notNull().default([]),
   ...provenance,

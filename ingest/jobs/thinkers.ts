@@ -19,6 +19,10 @@ const OCCUPATIONS: [string, string, number][] = [
   ["Q11774202", "ensaísta", 25],
 ];
 const PER_COUNTRY = 40;
+const BACKFILL_MIN = 10;
+// writer, poet, jurist, theologian, journalist, linguist, educator, essayist, philosopher, historian, economist, sociologist, political scientist
+const BACKFILL_OCCUPATIONS = ["Q36180", "Q49757", "Q185351", "Q1234713", "Q1930187", "Q14467526", "Q974144", "Q11774202", "Q4964182", "Q201788", "Q188094", "Q2306091", "Q1238570"];
+const selectedElsewhere = (m: Map<string, string[]>, q: string) => [...m.values()].some((l) => l.includes(q));
 
 type Ref = { qid: string; label: string };
 
@@ -77,7 +81,48 @@ export const thinkersJob: Job = {
       if (list.length < PER_COUNTRY) list.push(q);
       perCountry.set(c, list);
     }
-    const selected = [...perCountry.values()].flat();
+    // 3b. Backfill: countries with few thinkers get a broader search — writers,
+    // poets, jurists, theologians, journalists, linguists, educators — with a lower
+    // notability floor, so small countries still show their intellectual life.
+    const sovereign = (await db.execute(sql`select code, wikidata_qid from countries where ne_type in ('Sovereign country', 'Country') and wikidata_qid is not null`)) as unknown as { code: string; wikidata_qid: string }[];
+    const thin = sovereign.filter((c) => (perCountry.get(c.code.trim())?.length ?? 0) < BACKFILL_MIN);
+    for (const batch of chunks(thin, 12)) {
+      try {
+        const rows = await sparql(
+          `SELECT ?c ?p ?sl ?occ WHERE { VALUES ?c { ${batch.map((c) => `wd:${c.wikidata_qid}`).join(" ")} }
+            VALUES ?occ { ${BACKFILL_OCCUPATIONS.map((o) => `wd:${o}`).join(" ")} }
+            ?p wdt:P27 ?c ; wdt:P106 ?occ ; wikibase:sitelinks ?sl . FILTER(?sl >= 4) ?p wdt:P31 wd:Q5 . }`,
+          { ttlHours: 24 * 14 },
+        );
+        const byCountry = new Map<string, Map<string, number>>();
+        for (const r of rows) {
+          const code = byQid.get(qid(r.c)!)!;
+          const m = byCountry.get(code) ?? new Map<string, number>();
+          m.set(qid(r.p)!, Number(r.sl));
+          byCountry.set(code, m);
+          const q = qid(r.p)!;
+          const c = cand.get(q) ?? { sl: Number(r.sl), occ: new Set<string>() };
+          c.occ.add(qid(r.occ)!);
+          cand.set(q, c);
+          // Citizenship is what we queried; make it the primary country if none was known.
+          const e = countries.get(q) ?? { cit: new Set<string>(), birth: new Set<string>() };
+          e.cit.add(code);
+          countries.set(q, e);
+        }
+        for (const [code, m] of byCountry) {
+          const list = perCountry.get(code) ?? [];
+          for (const [q] of [...m].sort((a, b) => b[1] - a[1])) {
+            if (list.length >= BACKFILL_MIN + 5) break;
+            if (!list.includes(q) && !selectedElsewhere(perCountry, q)) list.push(q);
+          }
+          perCountry.set(code, list);
+        }
+      } catch (err) {
+        log.warn(`busca ampliada falhou para ${batch.map((c) => c.code).join(",")}: ${(err as Error).message}`);
+      }
+    }
+
+    const selected = [...new Set([...perCountry.values()].flat())];
     log.info(`selecionados: ${selected.length} em ${perCountry.size} países`);
 
     // 4. Details.

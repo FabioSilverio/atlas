@@ -1,6 +1,9 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db/client";
 import { HERRE_CATEGORY_VALUE, normalize, type Dimension } from "@/lib/ideology/normalize";
+import { FAMILY_NAME, alignmentEstimate, familyOf } from "@/lib/ideology/labels";
+import { qid, sparql } from "../lib/sparql";
+import { chunks } from "../lib/wiki";
 import { countryMatcher } from "../lib/countries";
 import {
   loadChesCanada,
@@ -20,7 +23,7 @@ import { norm, num, sameLeader } from "../lib/text";
 
 type Insert = typeof schema.ideologyScores.$inferInsert;
 type Party = typeof schema.parties.$inferSelect;
-const SOURCES = ["ches-europe-2024", "ches-la-2020", "ches-canada-2023", "ches-israel-2022", "parlgov", "gps-2019", "herre-gli"];
+const SOURCES = ["ches-europe-2024", "ches-la-2020", "ches-canada-2023", "ches-israel-2022", "parlgov", "gps-2019", "herre-gli", "wikidata"];
 
 /** 0–10 expert scale → score rows for the given dimensions. */
 function survey(
@@ -186,6 +189,88 @@ export const scoresJob: Job = {
         }
       }
     }
+
+    // Confidence-D estimates for parties (and party-less leaders) no survey covers.
+    // (a) Wikidata P1387 political alignment → general left–right value.
+    // (b) Ideology labels (P1142) → ParlGov party family → that family's mean position in ParlGov.
+    const familyMeans = new Map<string, { econ: number; gal: number; n: number }>();
+    {
+      const acc = new Map<string, { e: number; g: number; n: number }>();
+      for (const r of await loadParlgov()) {
+        const e = num(r.state_market);
+        const g = num(r.liberty_authority);
+        if (e == null || g == null) continue;
+        const a = acc.get(r.family_name_short) ?? { e: 0, g: 0, n: 0 };
+        acc.set(r.family_name_short, { e: a.e + e, g: a.g + g, n: a.n + 1 });
+      }
+      for (const [f, a] of acc) familyMeans.set(f, { econ: a.e / a.n, gal: a.g / a.n, n: a.n });
+    }
+    const surveyed = new Set(rows.filter((r) => r.method === "expert_survey" && r.partyId).map((r) => r.partyId));
+    const unscored = parties.filter((p) => !surveyed.has(p.id) && p.wikidataQid);
+    const alignment = new Map<string, string[]>();
+    for (const batch of chunks(unscored.map((p) => p.wikidataQid!), 200)) {
+      const res = await sparql(
+        `SELECT ?p ?alLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} } ?p wdt:P1387 ?al .
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`,
+        { ttlHours: 24 * 7 },
+      );
+      for (const r of res) alignment.set(qid(r.p)!, [...(alignment.get(qid(r.p)!) ?? []), r.alLabel]);
+    }
+    const ideologyLabels = new Map<number, string[]>();
+    for (const r of (await db.execute(sql`select pi.party_id, coalesce(i.name_en, i.name) as label from party_ideologies pi join ideologies i on i.qid = pi.ideology_qid`)) as unknown as { party_id: number; label: string }[])
+      ideologyLabels.set(r.party_id, [...(ideologyLabels.get(r.party_id) ?? []), r.label]);
+    const familyRow = (subject: { partyId?: number; personId?: number }, labels: string[], subjectName: string): Insert[] => {
+      const f = familyOf(labels);
+      const m = f ? familyMeans.get(f.family) : undefined;
+      if (!f || !m) return [];
+      const notes = `rótulo “${f.matched}” (Wikidata P1142) → família ${FAMILY_NAME[f.family]}; posição média dessa família entre ${m.n} partidos do ParlGov: ${m.econ.toFixed(1)}/10 no eixo econômico e ${m.gal.toFixed(1)}/10 no cultural.`;
+      return (["econ_lr", "galtan"] as const).map((dim) => ({
+        ...subject,
+        dimension: dim,
+        rawValue: String((dim === "econ_lr" ? m.econ : m.gal).toFixed(2)),
+        rawLabel: f.family,
+        scaleMin: "0",
+        scaleMax: "10",
+        valueNorm: String(normalize(dim === "econ_lr" ? m.econ : m.gal, 0, 10)),
+        observedYear: null,
+        method: "family_label",
+        subjectName,
+        notes,
+        sourceId: "parlgov",
+        sourceUrl: "https://www.parlgov.org/data-info/",
+      }));
+    };
+    for (const p of unscored) {
+      const al = alignmentEstimate(alignment.get(p.wikidataQid!) ?? []);
+      if (al)
+        add("wikidata-alignment", [
+          {
+            partyId: p.id,
+            dimension: "econ_lr",
+            rawLabel: al.used.join(", "),
+            valueNorm: String(al.value),
+            method: "alignment_label",
+            subjectName: p.name,
+            notes: `posição política declarada no Wikidata (P1387): ${al.used.join(", ")}; usada como aproximação do eixo econômico (é uma escala geral esquerda–direita).`,
+            sourceId: "wikidata",
+            sourceUrl: `https://www.wikidata.org/wiki/${p.wikidataQid}#P1387`,
+          },
+        ]);
+      add("family-label", familyRow({ partyId: p.id }, ideologyLabels.get(p.id) ?? [], p.name));
+    }
+    // Leaders without a party: their own ideology labels.
+    const leaders = (await db.execute(sql`
+      select gc.leader->>'qid' as qid, gc.leader->>'name' as name, gc.leader->'ideologies' as ideologies, pe.id as person_id
+      from government_context gc join people pe on pe.wikidata_qid = gc.leader->>'qid'
+      join governments g on g.country_code = gc.country_code and g.ended_on is null
+      where not exists (select 1 from government_parties x where x.government_id = g.id and x.role = 'leader')`)) as unknown as { qid: string; name: string; ideologies: { qid: string }[] | null; person_id: number }[];
+    const leaderIdeoQids = [...new Set(leaders.flatMap((l) => (l.ideologies ?? []).map((i) => i.qid)))];
+    const enLabel = new Map<string, string>();
+    for (const batch of chunks(leaderIdeoQids, 200)) {
+      const res = await sparql(`SELECT ?i ?l WHERE { VALUES ?i { ${batch.map((q) => `wd:${q}`).join(" ")} } ?i rdfs:label ?l FILTER(LANG(?l) = "en") }`, { ttlHours: 24 * 30 });
+      for (const r of res) enLabel.set(qid(r.i)!, r.l);
+    }
+    for (const l of leaders) add("family-label-leader", familyRow({ personId: l.person_id }, (l.ideologies ?? []).map((i) => enLabel.get(i.qid)).filter(Boolean) as string[], l.name));
 
     // Full refresh of these sources; editorial estimates (atlas-curation) are left alone.
     await db.transaction(async (tx) => {

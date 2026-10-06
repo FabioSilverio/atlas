@@ -162,3 +162,24 @@ describe("presidential systems and multiple memberships", () => {
     expect(r.valueNorm).toBe(-0.6);
   });
 });
+
+describe("label estimates", () => {
+  it("uses the declared alignment as a D estimate when nothing else exists", () => {
+    const r = deriveGovernmentPosition({ ...base, scores: [score({ method: "alignment_label", sourceId: "wikidata", valueNorm: 0.3, notes: "centre-right" })] });
+    expect(r.confidence).toBe("D");
+    expect(r.isEstimate).toBe(true);
+    expect(r.derivation.rule).toBe("label_estimate");
+  });
+  it("prefers a survey over any label", () => {
+    const r = deriveGovernmentPosition({
+      ...base,
+      scores: [score({ method: "alignment_label", sourceId: "wikidata", valueNorm: 0.9 }), score({ id: 2, sourceId: "gps-2019", valueNorm: -0.2, observedYear: 2019 })],
+    });
+    expect(r.valueNorm).toBe(-0.2);
+  });
+  it("falls back to the leader's own ideology family", () => {
+    const r = deriveGovernmentPosition({ ...base, chiefParties: [], scores: [score({ partyId: null, personId: 7, method: "family_label", sourceId: "parlgov", valueNorm: 0.4 })] });
+    expect(r.valueNorm).toBe(0.4);
+    expect(r.confidence).toBe("D");
+  });
+});

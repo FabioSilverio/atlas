@@ -19,6 +19,31 @@ export async function GovernmentContext({ code }: { code: string }) {
     <section className="px-4 py-4">
       <h3 className="label mb-3">Governo em contexto</h3>
 
+      {leader && (leader.summary || leader.description) && (
+        <div className="mb-4 flex gap-3">
+          {leader.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={leader.imageUrl} alt={`Retrato de ${leader.name}`} className="h-20 w-16 shrink-0 border border-line-strong object-cover grayscale" loading="lazy" />
+          )}
+          <div className="min-w-0">
+            <div className="label">Quem é o líder</div>
+            <div className="text-[14px] text-ink">
+              {leader.name}
+              {leader.birthYear && <span className="ml-1.5 font-mono text-[11px] text-muted">n. {leader.birthYear}</span>}
+            </div>
+            {leader.description && <div className="text-[12px] text-muted">{leader.description}</div>}
+            {leader.summary && (
+              <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">
+                {leader.summary}{" "}
+                <a href={leader.summaryUrl ?? "#"} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-muted underline">
+                  Wikipédia
+                </a>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {party && (
         <div>
           <div className="flex items-baseline justify-between gap-2">

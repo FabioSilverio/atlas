@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 import { verifyGithubActions } from "@/lib/github-oidc";
 import { runJob } from "@/ingest/lib/job";
 import { opinionJob, themesJob } from "@/ingest/jobs/opinion";
+import { newsJob } from "@/ingest/jobs/news";
 
 export const maxDuration = 300;
 
@@ -12,7 +13,7 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   if (!(await verifyGithubActions(req))) return Response.json({ error: "unauthorized" }, { status: 401 });
   const only = new URL(req.url).searchParams.get("only");
-  const jobs = only === "themes" ? [themesJob] : [opinionJob, themesJob];
+  const jobs = only === "themes" ? [themesJob] : [opinionJob, newsJob, themesJob];
   const results: Record<string, string> = {};
   for (const j of jobs) {
     try {
