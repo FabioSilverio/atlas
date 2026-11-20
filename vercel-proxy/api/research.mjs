@@ -61,6 +61,8 @@ async function searchYouTube(q, contextSearch = false) {
               const viewsText = v.viewCountText?.simpleText ?? v.shortViewCountText?.simpleText ?? "";
               const publishedText = v.publishedTimeText?.simpleText ?? null;
               const lengthText = v.lengthText?.simpleText ?? null;
+              const description = v.detailedMetadataSnippets?.[0]?.snippetText?.runs
+                ?.map((run) => run.text).join("").trim() ?? null;
               if (title) {
                 out.push({
                   id: v.videoId,
@@ -70,6 +72,7 @@ async function searchYouTube(q, contextSearch = false) {
                   viewsText: viewsText || null,
                   publishedText,
                   lengthText,
+                  description: description?.slice(0, 500) ?? null,
                   url: `https://www.youtube.com/watch?v=${v.videoId}`,
                 });
               }
@@ -257,16 +260,18 @@ async function readVideoEvidence(video, query) {
     url: video.url,
     publishedAt: null,
   };
-  let extract = null;
+  let extract = video.description ? `Trecho da descrição indexada do canal: ${video.description}` : null;
   try {
     const response = await fetch(video.url, {
       headers: { "User-Agent": UA, "Accept-Language": "pt-BR" },
       signal: AbortSignal.timeout(3500),
     });
-    if (!response.ok) return source;
+    if (!response.ok) return { ...source, extract };
     const html = await response.text();
+    const meta = html.match(/<meta name="description" content="([^"]*)"/)?.[1];
+    if (meta) extract = `Descrição do canal: ${decodeHtml(meta).slice(0, 500)}`;
     const playerMatch = html.match(/(?:var )?ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\});/);
-    if (!playerMatch) return source;
+    if (!playerMatch) return { ...source, extract };
     const player = JSON.parse(playerMatch[1]);
     const description = player.videoDetails?.shortDescription?.trim();
     if (description) extract = `Descrição do canal: ${description.slice(0, 500)}`;
