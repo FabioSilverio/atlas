@@ -257,6 +257,24 @@ async function searchBackground(q) {
     url: "https://www.gazetadopovo.com.br/vida-e-cidadania/apresentador-felipe-sestaro-ganha-projecao-com-embates-politicos-no-irontalks/",
     publishedAt: null,
     extract: "A reportagem relata que Felipe Sestaro atuou como missionário evangélico da igreja Bola de Neve durante o período em que viveu na Rússia.",
+  }, {
+    title: "Bossa Nova, restaurante brasileiro em Moscou",
+    source: "Afisha Daily",
+    url: "https://daily.afisha.ru/eating/2570-bossa-nova-sovremennaya-brazilskaya-kuhnya-na-yugo-zapadnoy/",
+    publishedAt: "2016-08-09",
+    extract: "Em agosto de 2016, a reportagem identificou Paolo Sestaro como pai de Felipe e pizzaiolo do restaurante Bossa Nova, em Moscou.",
+  }, {
+    title: "Fé modelo exportação",
+    source: "Gazeta Russa / Russia Beyond",
+    url: "https://br.rbth.com/sociedade/2014/11/20/fe_modelo_exportacao_28335",
+    publishedAt: "2014-11-20",
+    extract: "Em entrevista de 2014, Felipe Sestaro falou sobre seu trabalho missionário em Moscou. A reportagem o apresentou como pastor e idealizador da filial local da Bola de Neve.",
+  }, {
+    title: "Dossiê Sestaro, capítulo sobre o pai (4:20)",
+    source: "Canal do VKS",
+    url: "https://www.youtube.com/watch?v=Gw2yEHO4COY&t=260s",
+    publishedAt: null,
+    extract: "O vídeo discute a relação de Felipe com o pai e cita a Afisha Daily. A matéria documenta o trabalho no restaurante em 2016; a interpretação do canal sobre a duração do afastamento continua sendo uma alegação.",
   }] : [];
   return [...editorial, ...new Map(sources.flat().map((item) => [item.title, item])).values()].slice(0, 10);
 }
