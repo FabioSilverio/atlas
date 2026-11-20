@@ -64,3 +64,46 @@ describe("infobox parser", () => {
     expect(plain("{{nowrap|[[Sóstenes Cavalcante]]}}")).toBe("Sóstenes Cavalcante");
   });
 });
+
+describe("chamber names and race kinds", () => {
+  it("strips the seat arithmetic from chamber names", async () => {
+    const { cleanBody } = await import("@/ingest/lib/infobox");
+    expect(cleanBody("Folketing 175 from Denmark, 2 from Greenland and 2 from the Faroe Islands")).toBe("Folketing");
+    expect(cleanBody("National Council (101 seats needed for a majority) All 46 seats in the Council of States")).toBe("National Council");
+    expect(cleanBody("House of Representatives, including 11 overhang seats 66 seats needed for a majority")).toBe("House of Representatives");
+    expect(cleanBody("Chamber of Deputies 54 of the 81 seats in the Senate")).toBe("Chamber of Deputies");
+    expect(cleanBody("the Federal Senate")).toBe("Federal Senate");
+  });
+
+  it("does not file a candidate-less vote summary as a presidential race", () => {
+    const [box] = findElectionInfoboxes(`{{Infobox election
+| election_name = 2010 United States Senate elections
+| election_date = November 2, 2010
+| party1 = [[Republican Party (United States)|Republican]]
+| popular_vote1 = 32,000,000
+| percentage1 = 51.9%
+| party2 = [[Democratic Party (United States)|Democratic]]
+| popular_vote2 = 29,000,000
+| percentage2 = 47.1%
+}}`);
+    expect(interpret(box)).toBeNull();
+  });
+});
+
+describe("presidential nominees", () => {
+  it("reads US-style nomineeN fields as candidates", () => {
+    const [box] = findElectionInfoboxes(`{{Infobox election
+| election_name = 2022 South Korean presidential election
+| election_date = March 9, 2022
+| nominee1 = '''[[Yoon Suk Yeol]]'''
+| party1 = People Power Party
+| percentage1 = 48.56%
+| nominee2 = [[Lee Jae Myung]]
+| party2 = [[Democratic Party (South Korea, 2015)|Democratic]]
+| percentage2 = 47.83%
+}}`);
+    const e = interpret(box)!;
+    expect(e.kind).toBe("presidential");
+    expect(e.results.map((r) => r.candidate)).toEqual(["Yoon Suk Yeol", "Lee Jae Myung"]);
+  });
+});

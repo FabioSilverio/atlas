@@ -4,7 +4,7 @@ import { db, schema } from "@/lib/db/client";
 import { SOURCE_SHORT } from "@/lib/ideology/derive";
 import { loadPartyFactsCore } from "../lib/datasets";
 import { fetchJson } from "../lib/http";
-import { findElectionInfoboxes, interpret, type ParsedElection } from "../lib/infobox";
+import { cleanBody, findElectionInfoboxes, interpret, type ParsedElection } from "../lib/infobox";
 import { touchSource, type Job } from "../lib/job";
 import { getState, setState } from "../lib/state";
 import { log } from "../lib/log";
@@ -14,6 +14,46 @@ import { wikiKey } from "../lib/text";
 import { chunks } from "../lib/wiki";
 
 const FIRST_YEAR = 2005;
+
+/**
+ * Fixes rows an older parser stored (articles are re-read only monthly): vote summaries
+ * without candidates filed as presidential races, "ongoing" flags left for months, and
+ * chamber names carrying the infobox's seat arithmetic.
+ */
+async function repairStoredElections() {
+  // Presidential rows without any candidate name: re-read their articles (older parser missed
+  // the `nomineeN` field); drop only those whose article is about a chamber (US Senate vote boxes).
+  const noCandidates = sql`kind = 'presidential' and not exists (select 1 from election_results r where r.election_id = elections.id and coalesce(r.candidate, '') not in ('', '–', '-'))`;
+  await db.execute(sql`update election_articles set checked_at = null where title in (select title from elections where ${noCandidates})`);
+  const ghosts = (await db.execute(sql`
+    delete from elections where ${noCandidates}
+      and title ~* '(senate|house of|chamber|parliament|legislative|congressional|assembly|midterm)' and title !~* 'presidential'
+    returning id`)) as unknown as unknown[];
+  const closed = (await db.execute(sql`
+    update elections set status = 'held' where status = 'ongoing' and date < now() - interval '60 days' returning id`)) as unknown as unknown[];
+  let renamed = 0;
+  let merged = 0;
+  const all = await db.select({ id: schema.elections.id, code: schema.elections.countryCode, date: schema.elections.date, body: schema.elections.body, kind: schema.elections.kind }).from(schema.elections);
+  for (const e of all) {
+    if (e.kind !== "legislative") continue;
+    const dirty = e.body;
+    const clean = cleanBody(dirty) || "Legislativo";
+    if (clean === dirty) continue;
+    const twin = all.find((x) => x.id !== e.id && x.code === e.code && x.date === e.date && x.body === clean);
+    if (twin) {
+      await db.delete(schema.elections).where(eq(schema.elections.id, e.id));
+      merged++;
+    } else {
+      await db.update(schema.elections).set({ body: clean }).where(eq(schema.elections.id, e.id));
+      e.body = clean;
+      renamed++;
+    }
+    // Feed items already published with the long name.
+    await db.execute(sql`update events set title = replace(title, ${dirty}, ${clean}) where position(${dirty} in title) > 0`);
+  }
+  if (ghosts.length + closed.length + renamed + merged) log.info(`reparo de eleições: ${ghosts.length} falsas presidenciais removidas, ${closed.length} "em andamento" encerradas, ${renamed} órgãos renomeados, ${merged} duplicatas`);
+  return { ghosts: ghosts.length, closed: closed.length, renamed, merged };
+}
 const TYPES = "general|parliamentary|presidential|legislative|federal|congressional|national assembly|house of representatives|senate|chamber of deputies|national|state duma|majlis";
 // Vercel functions have ~300 s; locally there is no budget.
 const budgetMs = () => (process.env.VERCEL ? 200_000 : Number.POSITIVE_INFINITY);
@@ -63,6 +103,7 @@ export const electionsJob: Job = {
   name: "elections",
   description: "eleições nacionais desde 2005 (infoboxes da Wikipédia) + posição ponderada por cadeiras",
   async run() {
+    const repaired = await repairStoredElections();
     const deadline = Date.now() + budgetMs();
     const countries = await db
       .select({ code: schema.countries.code, qid: schema.countries.wikidataQid, nameEn: schema.countries.nameEn, namePt: schema.countries.namePt, neType: schema.countries.neType })
@@ -180,7 +221,9 @@ export const electionsJob: Job = {
           };
           const econ = wavg("econ");
           const gal = wavg("galtan");
-          const status = e.ongoing || (!e.winner && e.kind === "presidential" && date >= new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) ? "ongoing" : "held";
+          // "ongoing" only while the vote is recent: editors often forget the infobox flag.
+          const recent = date >= new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
+          const status = recent && (e.ongoing || (!e.winner && e.kind === "presidential")) ? "ongoing" : "held";
           const values = {
             countryCode: art.countryCode,
             date,
@@ -267,7 +310,7 @@ export const electionsJob: Job = {
     await touchSource("wikipedia-elections");
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.elections);
     log.info(`eleições no banco: ${n}`);
-    return { discovered, articlesChecked: todo.length, modulesParsed: parsed, electionsUpserted: upserted, elections: n, cursor: i };
+    return { repairedGhosts: repaired.ghosts, repairedClosed: repaired.closed, repairedRenamed: repaired.renamed + repaired.merged, discovered, articlesChecked: todo.length, modulesParsed: parsed, electionsUpserted: upserted, elections: n, cursor: i };
   },
 };
 

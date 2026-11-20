@@ -113,6 +113,24 @@ export function runoffDate(v: string | undefined): string | null {
 }
 const iso = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
+/** Words that only appear in legislative races. */
+const LEGISLATURE = /\b(senate|house of|chamber|parliament|assembly|congress|legislat|council of states|folketing|riksdag|storting|bundestag|knesset|duma|majlis|seimas|sejm|cortes|diet)/i;
+
+/**
+ * Chamber name without the infobox's seat arithmetic: "Folketing 175 from Denmark, 2 from…",
+ * "National Council (101 seats needed for a majority) All 46 seats…", "House of
+ * Representatives, including 11 overhang seats…" → "Folketing", "National Council",
+ * "House of Representatives".
+ */
+export function cleanBody(raw: string): string {
+  return raw
+    .replace(/^the /i, "")
+    .split(/\s*\(|,|\s+\d[\d,]*\s|\s+(?:all|including|plus)\s/i)[0]
+    .replace(/\s+seats?$/i, "")
+    .trim()
+    .slice(0, 120);
+}
+
 export type ParsedResult = { position: number; party: string | null; partyLabel: string; candidate: string | null; seats: number | null; seatsBefore: number | null; votes: number | null; share: number | null };
 export type ParsedElection = {
   kind: "presidential" | "legislative";
@@ -132,8 +150,9 @@ export function interpret(t: Template): ParsedElection | null {
   const results: ParsedResult[] = [];
   for (let i = 1; i <= 40; i++) {
     const party = p[`party${i}`];
-    const candidate = p[`candidate${i}`] ?? p[`leader${i}`];
-    if (!party && !p[`candidate${i}`]) continue;
+    // Presidential boxes name the runner as nominee (US style) or candidate; legislative ones as leader.
+    const candidate = p[`nominee${i}`] ?? p[`candidate${i}`] ?? p[`leader${i}`];
+    if (!party && !p[`candidate${i}`] && !p[`nominee${i}`]) continue;
     // Seat counts are integers; some infoboxes put a vote share in last_election.
     const int = (v: string | undefined) => {
       const n = num(v);
@@ -152,15 +171,17 @@ export function interpret(t: Template): ParsedElection | null {
     });
   }
   if (!results.length) return null;
-  const legislative = /legislative/i.test(t.name) || results.some((r) => r.seats != null);
   const seatsText = plain(p.seats_for_election);
-  const bodyFromSeats = seatsText.match(/seats? (?:in|of) the (.+)$/i)?.[1];
   const name = plain(p.election_name);
-  const body = legislative
-    ? (bodyFromSeats ?? (name && !/^\d{4}/.test(name) ? name : "Legislativo")).replace(/^the /i, "")
-    : "Presidente";
+  const legislative = /legislative/i.test(t.name) || results.some((r) => r.seats != null) || LEGISLATURE.test(`${name} ${seatsText}`);
+  const bodyFromSeats = seatsText.match(/seats? (?:in|of) the (.+)$/i)?.[1];
+  const body = legislative ? cleanBody(bodyFromSeats ?? (name && !/^\d{4}/.test(name) ? name : "")) || "Legislativo" : "Presidente";
   if (legislative && !results.some((r) => r.seats != null || r.share != null)) return null;
-  if (!legislative && !results.some((r) => r.share != null || r.votes != null)) return null;
+  // Named after a chamber but without seats or a legislative template: a popular-vote summary.
+  if (legislative && !/legislative/i.test(t.name) && !results.some((r) => r.seats != null)) return null;
+  // A presidential race names its candidates; a vote summary without them (US Senate
+  // popular vote boxes, referendums) is not one.
+  if (!legislative && (!results.some((r) => r.share != null || r.votes != null) || !results.some((r) => r.candidate))) return null;
   return {
     kind: legislative ? "legislative" : "presidential",
     body,

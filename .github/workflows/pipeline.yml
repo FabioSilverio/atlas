@@ -117,6 +117,11 @@ jobs:
           gh release view db >/dev/null 2>&1 || gh release create db --prerelease --title "Banco do ATLAS" --notes "Snapshot horário do banco (dados públicos), restaurado e salvo pelo pipeline."
           gh release upload db /tmp/atlas-db.tar.gz --clobber
 
+      # Every country page checked with the same rules the site uses; report in the run summary.
+      - name: Auditoria dos países
+        continue-on-error: true
+        run: npx tsx scripts/audit-countries.ts
+
       - name: Montar o site
         run: |
           npx next build
