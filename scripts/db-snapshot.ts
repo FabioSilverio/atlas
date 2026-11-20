@@ -37,20 +37,33 @@ async function exportAll() {
     select (select count(*) from countries)::int as countries, (select count(*) from thinkers)::int as thinkers`;
   if (!process.env.ALLOW_SMALL_SNAPSHOT && (countries < 200 || thinkers < 1000)) throw new Error(`banco incompleto (países ${countries}, pensadores ${thinkers}): snapshot não salvo`);
   await mkdir(dir, { recursive: true });
+  const allTables = await tables();
   const manifest: Record<string, string[]> = {};
-  for (const t of await tables()) {
-    const cols = await columns(t);
-    manifest[t] = cols;
-    const stream = await sql`copy ${sql(t)} (${sql(cols)}) to stdout`.readable();
-    const gzip = createGzip({ level: 6 });
-    const done = pipeline(gzip, createWriteStream(path.join(dir, `${t}.tsv.gz`)));
-    for await (const chunk of stream) {
-      if (!gzip.write(chunk)) await once(gzip, "drain");
-    }
-    gzip.end();
-    await done;
-    console.log(`exportado ${t}`);
-  }
+  for (const t of allTables) manifest[t] = await columns(t);
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: 4 }, async () => {
+      while (i < allTables.length) {
+        const t = allTables[i++];
+        const cols = manifest[t];
+        // A dedicated connection per COPY avoids postgres.js connection desync after large COPY streams.
+        const conn = postgres(url!, { max: 1, onnotice: () => {} });
+        try {
+          const stream = await conn`copy ${conn(t)} (${conn(cols)}) to stdout`.readable();
+          const gzip = createGzip({ level: 6 });
+          const done = pipeline(gzip, createWriteStream(path.join(dir, `${t}.tsv.gz`)));
+          for await (const chunk of stream) {
+            if (!gzip.write(chunk)) await once(gzip, "drain");
+          }
+          gzip.end();
+          await done;
+          console.log(`exportado ${t}`);
+        } finally {
+          await conn.end({ timeout: 2 });
+        }
+      }
+    }),
+  );
   await writeFile(path.join(dir, "manifest.json"), JSON.stringify({ at: new Date().toISOString(), tables: manifest }, null, 1));
 }
 
