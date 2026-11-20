@@ -4,11 +4,12 @@ import { db, schema } from "@/lib/db/client";
 import { SOURCE_SHORT } from "@/lib/ideology/derive";
 import { loadPartyFactsCore } from "../lib/datasets";
 import { fetchJson } from "../lib/http";
-import { cleanBody, findElectionInfoboxes, interpret, type ParsedElection } from "../lib/infobox";
+import { cleanBody, findElectionInfoboxes, firstDate, interpret, type ParsedElection } from "../lib/infobox";
 import { touchSource, type Job } from "../lib/job";
 import { getState, setState } from "../lib/state";
 import { log } from "../lib/log";
 import { loadPartyScores } from "../lib/party-scores";
+import { partyPeriodIndex, type CoreParty } from "../lib/party-period";
 import { qid, sparql } from "../lib/sparql";
 import { wikiKey } from "../lib/text";
 import { chunks } from "../lib/wiki";
@@ -20,7 +21,17 @@ const FIRST_YEAR = 2005;
  * without candidates filed as presidential races, "ongoing" flags left for months, and
  * chamber names carrying the infobox's seat arithmetic.
  */
+// Bump when the infobox reader changes in a way that affects already-stored elections:
+// every article is then re-read once. v2: nomineeN candidates, vice-presidential modules,
+// parent-box dates of general elections, chamber names, period-aware party matching.
+const PARSER_VERSION = 2;
+
 async function repairStoredElections() {
+  if ((await getState("elections.parser.version", 1)) < PARSER_VERSION) {
+    await db.update(schema.electionArticles).set({ checkedAt: null });
+    await setState("elections.parser.version", PARSER_VERSION);
+    log.info(`leitor de eleições v${PARSER_VERSION}: todos os artigos serão relidos`);
+  }
   // Presidential rows without any candidate name: re-read their articles (older parser missed
   // the `nomineeN` field); drop only those whose article is about a chamber (US Senate vote boxes).
   const noCandidates = sql`kind = 'presidential' and not exists (select 1 from election_results r where r.election_id = elections.id and coalesce(r.candidate, '') not in ('', '–', '-'))`;
@@ -168,12 +179,15 @@ export const electionsJob: Job = {
         }
       }
     }
-    const pfFor = (title: string | null, label: string): { pf: number | null; note?: string } => {
+    const activeNamesake = partyPeriodIndex(core as unknown as CoreParty[]);
+    const pfFor = (title: string | null, label: string, year: number): { pf: number | null; note?: string } => {
       const cw = crosswalk[label] ?? (title ? crosswalk[title] : undefined);
       if (cw) return { pf: cw.partyfacts_id, note: cw.note };
       if (!title) return { pf: null };
       const k = wikiKey(redirectCache.get(title) ?? title)!;
-      return { pf: pfByWiki.get(k) ?? pfByWiki.get(wikiKey(title)!) ?? null };
+      const pf = pfByWiki.get(k) ?? pfByWiki.get(wikiKey(title)!) ?? null;
+      // A defunct namesake sharing the article (e.g. Brazil's PL of 1985–2006) → the party active that year.
+      return { pf: pf == null ? null : activeNamesake(pf, year, (id) => scores.has(id)) };
     };
 
     // 4. Read articles in batches of 50 (one request each), parse infoboxes.
@@ -197,8 +211,10 @@ export const electionsJob: Job = {
         const rev = page.revisions?.[0];
         await db.update(schema.electionArticles).set({ checkedAt: new Date(), revid: rev?.revid ?? null }).where(eq(schema.electionArticles.title, art.title));
         if (!rev) continue;
-        const elections = findElectionInfoboxes(rev.slots.main.content).map(interpret).filter((e): e is ParsedElection => !!e);
-        const parentDate = elections.find((e) => e.date)?.date ?? null;
+        const boxes = findElectionInfoboxes(rev.slots.main.content);
+        const elections = boxes.map(interpret).filter((e): e is ParsedElection => !!e);
+        // General-election pages date the parent box and embed result-only modules.
+        const parentDate = boxes.map((b) => firstDate(b.params.election_date)).find(Boolean) ?? null;
         await resolveTitles(elections.flatMap((e) => e.results.map((r) => r.party).filter(Boolean) as string[]));
 
         for (const e of elections) {
@@ -206,7 +222,7 @@ export const electionsJob: Job = {
           if (!date || Number(date.slice(0, 4)) !== art.year) continue;
           parsed++;
           const results = e.results.map((r) => {
-            const { pf, note } = pfFor(r.party, r.partyLabel);
+            const { pf, note } = pfFor(r.party, r.partyLabel, Number(date.slice(0, 4)));
             const s = pf ? scores.get(pf) : undefined;
             const ours = r.party ? ourByWiki.get(wikiKey(r.party)!) : undefined;
             return { ...r, pf, note, s, partyId: ours?.id ?? null };

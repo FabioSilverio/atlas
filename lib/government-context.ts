@@ -45,10 +45,23 @@ const surnamesOf = (name: string | null) => {
  */
 function candidateIndex(e: ElectionItem, name: string | null): number {
   for (const surname of surnamesOf(name)) {
-    const i = e.results.findIndex((r) => r.candidate && tokens(r.candidate).includes(surname));
+    const i = e.results.findIndex((r) => r.candidate && tokens(r.candidate).some((t) => sameToken(t, surname)));
     if (i >= 0) return i;
   }
   return -1;
+}
+
+/** Equal, or a transliteration variant of a long name ("mirziyoyev" ~ "mirziyayev"). */
+function sameToken(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 6 || Math.abs(a.length - b.length) > 2) return false;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length] <= 2;
 }
 
 /** Newest first; on a shared date the presidential vote, then the lower chamber, then the upper. */
@@ -147,6 +160,18 @@ export function auditCountry(c: AuditInput): AuditIssue[] {
     if (e.kind === "legislative" && /\d|\(|,| seats? /i.test(e.body)) add("aviso", `Nome de órgão com texto da infobox: "${e.body}"`);
     if (e.totalSeats && e.results.reduce((a, r) => a + (r.seats ?? 0), 0) > e.totalSeats * 1.02)
       add("aviso", `${e.body} de ${e.date}: mais cadeiras distribuídas do que o total (${e.totalSeats})`);
+  }
+
+  // Latest vote per chamber/office: a big party without a position skews the weighted average.
+  const lastPerBody = new Map<string, ElectionItem>();
+  for (const e of sortElections(c.elections)) if (!lastPerBody.has(`${e.kind}|${e.body}`)) lastPerBody.set(`${e.kind}|${e.body}`, e);
+  for (const e of lastPerBody.values()) {
+    const seatTotal = e.totalSeats ?? e.results.reduce((a, r) => a + (r.seats ?? 0), 0);
+    for (const r of e.results) {
+      const weight = e.kind === "legislative" && seatTotal ? ((r.seats ?? 0) / seatTotal) * 100 : (r.share ?? 0);
+      if (weight >= 10 && r.econ == null)
+        add("erro", `${e.kind === "presidential" ? "Presidencial" : e.body} de ${e.date}: ${partyLabel(r.candidate ?? r.party)} (${weight.toFixed(0)}%) sem posição ideológica — a média fica distorcida`);
+    }
   }
 
   // A presidential vote won by someone else, long enough ago for the new president to be in office.

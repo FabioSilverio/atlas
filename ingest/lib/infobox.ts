@@ -147,6 +147,8 @@ export type ParsedElection = {
 /** Interprets one infobox module. Returns null when it carries no usable results. */
 export function interpret(t: Template): ParsedElection | null {
   const p = t.params;
+  // Vice-presidential modules share the date and would overwrite the presidential result.
+  if (/\b(vice|deputy|lieutenant)\b/i.test(plain(p.title))) return null;
   const results: ParsedResult[] = [];
   for (let i = 1; i <= 40; i++) {
     const party = p[`party${i}`];

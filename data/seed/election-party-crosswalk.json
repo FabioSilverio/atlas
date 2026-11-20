@@ -23,5 +23,17 @@
   "Progressive Union (Brazil)": {
     "partyfacts_id": 781,
     "note": "Federação União Progressista (União Brasil + Progressistas): posição do PP; o União Brasil (2022) ainda não tem survey acadêmico."
+  },
+  "Brazil Union": {
+    "partyfacts_id": 1536,
+    "note": "União Brasil (2022) = fusão de DEM e PSL, ainda sem survey acadêmico próprio nem registro no Party Facts: posição do DEM (CHES América Latina 2020), legenda de origem cujo perfil de centro-direita o partido manteve; a ala bolsonarista do PSL migrou para o PL."
+  },
+  "União Brasil": {
+    "partyfacts_id": 1536,
+    "note": "União Brasil (2022) = fusão de DEM e PSL, ainda sem survey acadêmico próprio nem registro no Party Facts: posição do DEM (CHES América Latina 2020), legenda de origem cujo perfil de centro-direita o partido manteve; a ala bolsonarista do PSL migrou para o PL."
+  },
+  "Brazil Union (political party)": {
+    "partyfacts_id": 1536,
+    "note": "União Brasil (2022) = fusão de DEM e PSL, ainda sem survey acadêmico próprio nem registro no Party Facts: posição do DEM (CHES América Latina 2020), legenda de origem cujo perfil de centro-direita o partido manteve; a ala bolsonarista do PSL migrou para o PL."
   }
 }

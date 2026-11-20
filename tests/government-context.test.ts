@@ -69,7 +69,13 @@ describe("auditCountry", () => {
   const base: AuditInput = { code: "BRA", name: "Brasil", sovereign: true, role: "head_of_state", leader: lula, elections: brazil, nextElectionOn: null, econ: -0.4, galtan: -0.2, today: "2026-11-20" };
 
   it("finds nothing wrong with a consistent country", () => {
-    expect(auditCountry(base)).toEqual([]);
+    const scored = brazil.map((e) => ({ ...e, results: e.results.map((r) => ({ ...r, econ: 0.1 })) }));
+    expect(auditCountry({ ...base, elections: scored })).toEqual([]);
+  });
+
+  it("flags a big party left without a position in the latest vote", () => {
+    const issues = auditCountry({ ...base, elections: [senate2026] });
+    expect(issues.some((i) => /Liberal Party \(36%\) sem posição/.test(i.message))).toBe(true);
   });
 
   it("flags a count left open for weeks and a past 'next election'", () => {
@@ -87,5 +93,13 @@ describe("auditCountry", () => {
 
   it("flags a sovereign country left without any ideological position", () => {
     expect(auditCountry({ ...base, econ: null, galtan: null }).map((i) => i.message)).toContain("Sem posição ideológica em nenhum eixo");
+  });
+});
+
+describe("candidate names", () => {
+  it("tolerates transliteration variants of long surnames", () => {
+    const e = election({ date: "2023-07-09", results: [row({ candidate: "Shavkat Mirziyoyev", share: 87 })] });
+    const r = pickRise([e], { name: "Shavkat Mirziyayev", since: "2016-09-08", partyName: null, partyfactsId: null });
+    expect(r?.reelected).toBe(true);
   });
 });

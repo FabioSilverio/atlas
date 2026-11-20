@@ -107,3 +107,48 @@ describe("presidential nominees", () => {
     expect(e.results.map((r) => r.candidate)).toEqual(["Yoon Suk Yeol", "Lee Jae Myung"]);
   });
 });
+
+describe("embedded modules", () => {
+  it("ignores vice-presidential modules that would overwrite the president", () => {
+    const boxes = findElectionInfoboxes(`{{Infobox election
+| election_name = 2026 Vietnamese presidential election
+| election_date = 7 April 2026
+| party1 = Communist Party of Vietnam
+| nominee1 = '''[[Tô Lâm]]'''
+| percentage1 = '''100%'''
+| title = [[President of Vietnam|President]]
+}}
+{{Infobox election
+| type = presidential
+| party1 = Communist Party of Vietnam
+| nominee1 = '''[[Võ Thị Ánh Xuân]]'''
+| percentage1 = '''100%'''
+| title = [[Vice President of Vietnam|Vice President]]
+}}`);
+    const parsed = boxes.map(interpret).filter(Boolean);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]!.results[0].candidate).toBe("Tô Lâm");
+  });
+
+  it("keeps the parent box date for result-only modules of a general election", () => {
+    const boxes = findElectionInfoboxes(`{{Infobox election
+| election_name = 2025 Malawian general election
+| election_date = 16 September 2025
+| module = {{Infobox election
+| embed = yes
+| type = presidential
+| candidate1 = '''[[Peter Mutharika]]'''
+| party1 = Democratic Progressive Party (Malawi)
+| percentage1 = '''56.76%'''
+| candidate2 = [[Lazarus Chakwera]]
+| party2 = Malawi Congress Party
+| percentage2 = 33.01%
+}}
+}}`);
+    const parentDate = boxes.map((b) => firstDate(b.params.election_date)).find(Boolean);
+    const pres = boxes.map(interpret).find((e) => e?.kind === "presidential");
+    expect(parentDate).toBe("2025-09-16");
+    expect(pres?.date ?? null).toBeNull();
+    expect(pres?.results[0].candidate).toBe("Peter Mutharika");
+  });
+});
