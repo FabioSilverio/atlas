@@ -238,40 +238,40 @@ export function buildDossierMessages(ev: DossierEvidence): { role: "system" | "u
 
   if (ev.wiki.length) {
     lines.push("## WIKIPÉDIA");
-    for (const w of ev.wiki) lines.push(`### ${w.title} (${w.lang.toUpperCase()}) ${w.url}\n${w.extract}`);
+    for (const w of ev.wiki.slice(0, 2)) lines.push(`### ${w.title} (${w.lang.toUpperCase()}) ${w.url}\n${w.extract.slice(0, 800)}`);
   }
   if (ev.atlasHits.length) {
     lines.push("## BANCO DO ATLAS");
-    for (const h of ev.atlasHits.slice(0, 10)) {
+    for (const h of ev.atlasHits.slice(0, 5)) {
       lines.push(`- [${h.kind}] ${h.title}${h.subtitle ? ` — ${h.subtitle}` : ""}`);
     }
   }
   if (ev.news.length) {
     lines.push("## NOTÍCIAS RECENTES");
-    for (const n of ev.news.slice(0, 12)) lines.push(`- [${n.source ?? "Imprensa"}] ${n.title}`);
+    for (const n of ev.news.slice(0, 5)) lines.push(`- [${n.source ?? "Imprensa"}] ${n.title}`);
   }
   if (ev.youtube.length) {
     lines.push("## VÍDEOS MAIS VISTOS / RELEVANTES NO YOUTUBE");
-    for (const v of ev.youtube.slice(0, 10)) {
+    for (const v of ev.youtube.slice(0, 5)) {
       const vw = v.viewsText ?? (v.views != null ? `${v.views.toLocaleString("pt-BR")} views` : "");
       lines.push(`- [${v.channel ?? "YouTube"}${vw ? ` · ${vw}` : ""}] ${v.title}`);
     }
   }
   if (ev.background.length) {
     lines.push("## FONTES SOBRE FAMÍLIA E IGREJA");
-    for (const n of ev.background) lines.push(`- [${n.source ?? "Imprensa"}] ${n.title} (${n.url}) | ${n.extract ?? "Somente manchete, pista para verificação."}`);
+    for (const n of ev.background.slice(0, 4)) lines.push(`- [${n.source ?? "Imprensa"}] ${n.title} (${n.url}) | ${n.extract ?? "Somente manchete, pista para verificação."}`);
   }
   for (const [label, posts] of [["X", ev.x], ["Reddit", ev.reddit]] as const) {
     lines.push(`## ${label}${label === "Reddit" ? " (?ltimos 90 dias)" : ""}`);
     if (!posts.length) lines.push("Nenhuma conversa encontrada nas fontes consultadas.");
-    for (const post of posts.slice(0, 4)) {
+    for (const post of posts.slice(0, 2)) {
       lines.push(`- ${post.publishedAt ?? "Data desconhecida"} | ${post.url}`);
       lines.push(post.title);
-      if (post.body && post.body !== post.title) lines.push(post.body.slice(0, 1200));
+      if (post.body && post.body !== post.title) lines.push(post.body.slice(0, 800));
       const context = post.context ?? [];
-      if (post.contextPartial !== false || context.length > 10) lines.push("Contexto parcial ou indisponível.");
-      for (const entry of context.slice(0, 10)) {
-        lines.push(`  - ${entry.label} (${entry.author ?? label}, ${entry.url}): ${entry.text.slice(0, 500)}`);
+      if (post.contextPartial !== false || context.length > 6) lines.push("Contexto parcial ou indisponível.");
+      for (const entry of context.slice(0, 6)) {
+        lines.push(`  - ${entry.label} (${entry.author ?? label}, ${entry.url}): ${entry.text.slice(0, 300)}`);
       }
     }
   }
@@ -348,7 +348,7 @@ export async function streamWebGPUDossier(opts: {
     opts.onProgress(0.01, "Preparando Qwen 2.5 local no navegador (fica em cache após o 1º uso)…");
     const eng = (await webllm.CreateMLCEngine(opts.modelId, {
       initProgressCallback: (p) => opts.onProgress(p.progress ?? 0, p.text ?? "Carregando modelo…"),
-    })) as unknown as WebLLMEngine;
+    }, { context_window_size: 8192 })) as unknown as WebLLMEngine;
     cachedEngine = eng;
     cachedModelId = opts.modelId;
   }
@@ -387,7 +387,7 @@ export async function streamOllamaDossier(opts: {
       model: opts.model,
       messages: buildDossierMessages(opts.evidence),
       stream: true,
-      options: { temperature: 0.25 },
+      options: { temperature: 0.25, num_ctx: 8192 },
     }),
     signal: opts.signal,
   });
