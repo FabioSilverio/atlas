@@ -147,7 +147,7 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
         <div className="min-w-0">
           <div className="label flex items-center gap-1.5 text-cyan">
-            <span className={`inline-block size-2 rounded-full bg-cyan ${loadingEv || busy ? "live-dot" : ""}`} /> {quick ? "Pesquisa rápida" : "Pesquisa ao vivo"}
+            <span className={`inline-block size-2 rounded-full bg-cyan ${loadingEv || busy ? "live-dot" : ""}`} /> {quick && (loadingEv || updating) ? "Pesquisa rápida" : "Pesquisa ao vivo"}
           </div>
           <h2 className="mt-1 text-[22px] font-medium text-ink">“{query}”</h2>
           <p className="mt-1 text-[13px] text-muted">

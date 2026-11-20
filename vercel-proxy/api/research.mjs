@@ -427,7 +427,10 @@ async function readVideoEvidence(upstream, video, query) {
     if (!response.ok) return { ...source, extract };
     const html = await response.text();
     const meta = html.match(/<meta name="description" content="([^"]*)"/)?.[1];
-    if (meta) extract = `Descrição do canal: ${decodeHtml(meta).slice(0, 500)}`;
+    // YouTube serves its own boilerplate when a video has no description; skip it.
+    if (meta && !/^(Aproveite os vídeos e as músicas|Aproveite vídeos e músicas|Enjoy the videos and music)/i.test(decodeHtml(meta))) {
+      extract = `Descrição do canal: ${decodeHtml(meta).slice(0, 500)}`;
+    }
     const playerMatch = html.match(/(?:var )?ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\});/);
     if (!playerMatch) return { ...source, extract };
     const player = JSON.parse(playerMatch[1]);
@@ -490,7 +493,7 @@ async function searchVideoBackground(upstream, q, mainVideos) {
     if (!video || !/^[\w-]{11}$/.test(video.id)) continue;
     const title = normalizeSearchText(video.title);
     if (!keywords.every((word) => title.includes(word))) continue;
-    if (!musicQuery && /\b(official.*music video|official audio|videoclipe oficial)\b/.test(title)) continue;
+    if (!musicQuery && /\b(official.*music video|official audio|official m\/?v|official video|lyric video|videoclipe oficial|clipe oficial)\b|\bm\/?v\b/.test(title)) continue;
     selected.set(video.id, video);
     if (selected.size >= 3) break;
   }
