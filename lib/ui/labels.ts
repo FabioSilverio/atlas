@@ -31,15 +31,17 @@ export const EVENT_LABEL: Record<string, string> = {
   column_published: "COLUNA",
 };
 
-export type LayerId = "econ" | "galtan" | "elections" | "thinkers" | "nobel" | "themes";
-export const LAYER_IDS: LayerId[] = ["econ", "galtan", "elections", "thinkers", "nobel", "themes"];
+export type LayerId = "pulse" | "econ" | "galtan" | "elections" | "thinkers" | "nobel" | "themes" | "cost";
+export const LAYER_IDS: LayerId[] = ["pulse", "econ", "galtan", "elections", "thinkers", "nobel", "themes", "cost"];
 export const LAYERS: { id: LayerId; label: string; group: string }[] = [
+  { id: "pulse", label: "Quem domina a conversa", group: "Agora (monitor ao vivo)" },
   { id: "econ", label: "Eixo econômico", group: "Ideologia do governo atual" },
   { id: "galtan", label: "Eixo cultural (GAL–TAN)", group: "Ideologia do governo atual" },
   { id: "elections", label: "Eleições recentes (deriva)", group: "Eleições" },
   { id: "thinkers", label: "Densidade de pensadores", group: "Ideias e conhecimento" },
   { id: "nobel", label: "Nobel por país", group: "Ideias e conhecimento" },
   { id: "themes", label: "Debate de opinião", group: "Ideias e conhecimento" },
+  { id: "cost", label: "Custo de vida (EUA = 100)", group: "Economia" },
 ];
 
 export const fmtDate = (iso: string | null | undefined, opts: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" }) =>
@@ -89,3 +91,14 @@ export const SUBREGION_PT: Record<string, string> = {
   "Seven seas (open ocean)": "Oceano aberto",
 };
 export const subregionPt = (s: string | null) => (s ? (SUBREGION_PT[s] ?? s) : null);
+
+export const KIND_LABEL: Record<string, string> = {
+  country: "País",
+  person: "Pessoa",
+  thinker: "Pensador",
+  party: "Partido",
+  ideology: "Ideologia",
+  theme: "Tema",
+  election: "Eleição",
+  laureate: "Nobel",
+};

@@ -2,6 +2,7 @@ import type { MapCountry } from "@/lib/queries";
 import type { LayerId } from "@/lib/ui/labels";
 import { REGIME_LABEL, fmtDate, fmtNorm, sideLabel } from "@/lib/ui/labels";
 import { css, divergingColor } from "@/lib/ui/palette";
+import { SideBar, leader } from "@/components/ui/SideBar";
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
@@ -25,6 +26,27 @@ export function MapTooltip({ x, y, name, country, layer }: { x: number; y: numbe
       </div>
       {country?.chief && <div className="mt-0.5 text-[12px] text-ink-2">{country.chief}</div>}
       <div className="mt-2 space-y-0.5 border-t border-line pt-1.5 font-mono text-[11px] tabular">
+        {layer === "pulse" &&
+          (country?.pulse ? (
+            <>
+              <div className="mb-1 text-ink">{leader(country.pulse.left, country.pulse.right).text}</div>
+              <SideBar left={country.pulse.left} center={country.pulse.center} right={country.pulse.right} height={7} />
+              {country.pulse.term && <Row k="termo em alta" v={country.pulse.term} />}
+              <Row k="itens com lado (72h)" v={country.pulse.n} />
+            </>
+          ) : (
+            <span className="text-muted">monitor ainda sem itens atribuíveis</span>
+          ))}
+        {layer === "cost" &&
+          (country?.cost ? (
+            <>
+              <Row k="nível de preços" v={country.cost.priceLevel == null ? "—" : `${Math.round(country.cost.priceLevel)} (EUA = 100)`} />
+              <Row k="inflação ao consumidor" v={country.cost.inflation == null ? "—" : `${country.cost.inflation.toFixed(1)}% a.a.`} />
+              {country.cost.year && <Row k="ano" v={country.cost.year} />}
+            </>
+          ) : (
+            <span className="text-muted">sem dado do Banco Mundial</span>
+          ))}
         {layer === "nobel" && <Row k="laureados (nascimento)" v={country?.nobel ?? 0} />}
         {layer === "thinkers" && <Row k="pensadores no acervo" v={country?.thinkers ?? 0} />}
         {layer === "themes" &&

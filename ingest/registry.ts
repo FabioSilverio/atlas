@@ -15,11 +15,16 @@ import { contextJob } from "./jobs/context";
 import { opinionJob, themesJob } from "./jobs/opinion";
 import { searchJob } from "./jobs/search";
 import { newsJob } from "./jobs/news";
+import { actorsJob } from "./jobs/actors";
+import { channelsJob } from "./jobs/channels";
+import { monitorJob } from "./jobs/monitor";
+import { pulseJob } from "./jobs/pulse";
+import { costsJob } from "./jobs/costs";
 
 // Order matters: each job reads what the previous ones wrote.
-export const JOBS: Job[] = [sourcesJob, geoJob, regimesJob, governmentsJob, partiesJob, scoresJob, deriveJob, nobelJob, thinkersJob, ideologiesJob, contextJob, electionsJob, historyJob, opinionJob, newsJob, themesJob, searchJob];
+export const JOBS: Job[] = [sourcesJob, geoJob, regimesJob, governmentsJob, partiesJob, scoresJob, deriveJob, nobelJob, thinkersJob, ideologiesJob, contextJob, electionsJob, historyJob, opinionJob, newsJob, themesJob, actorsJob, channelsJob, costsJob, monitorJob, pulseJob, searchJob];
 
-// Named groups. `geo` writes public/ and therefore only runs locally / in CI, never on Vercel.
+// Named groups. The hourly pipeline (scripts/schedule.mjs) picks which run when.
 export const GROUPS: Record<string, string[]> = {
   all: JOBS.map((j) => j.name),
   ideology: ["sources", "governments", "parties", "scores", "derive"],
@@ -30,6 +35,10 @@ export const GROUPS: Record<string, string[]> = {
   context: ["context", "search"],
   elections: ["elections", "history", "search"],
   opinion: ["opinion", "news", "themes", "search"],
+  // Hourly: what is being said now, and the pulse computed from it.
+  live: ["monitor", "pulse", "search"],
+  // Weekly: who the actors and channels are.
+  "monitor-setup": ["actors", "channels", "costs"],
 };
 
 export function resolveJobs(names: string[]): Job[] {

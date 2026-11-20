@@ -1,11 +1,12 @@
 import "server-only";
+import type { Pulse } from "@/lib/db/schema";
 import { unstable_cache } from "next/cache";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import type { Confidence, Derivation } from "@/lib/ideology/derive";
 
 // Everything here only changes after an ingestion run, which calls
-// /api/revalidate (tag "atlas"). The hourly revalidate is a safety net.
+// with the build (the hourly pipeline rebuilds the static site).
 const CACHE = { tags: ["atlas"], revalidate: 3600 };
 
 export type Position = { v: number | null; c: Confidence | null; est: boolean };
@@ -26,6 +27,10 @@ export type MapCountry = {
   election: { date: string; body: string; kind: string; econ: number | null; drift: number | null } | null;
   /** Opinion pieces tracked in the last 30 days and the hottest theme (Phase 4). */
   opinion: { articles: number; theme: string | null; trend: string | null } | null;
+  /** Who dominates the political conversation now (monitor, last 72h) and the hottest term. */
+  pulse: { left: number; center: number; right: number; mean: number | null; prevMean: number | null; n: number; term: string | null } | null;
+  /** Cost of living (World Bank): price level with USA = 100, and inflation. */
+  cost: { priceLevel: number | null; inflation: number | null; year: number | null } | null;
 };
 
 type Row = Record<string, unknown>;
@@ -59,6 +64,10 @@ export const getMapData = unstable_cache(
       op_articles: number | null;
       op_theme: string | null;
       op_trend: string | null;
+      pulse: Pulse | null;
+      price_level: string | null;
+      inflation: string | null;
+      cost_year: number | null;
     }>(sql`
       select c.code, c.iso2, c.name_pt as name, c.subregion as region, c.regime_type as regime,
              c.is_disputed as disputed, c.ne_type,
@@ -68,8 +77,13 @@ export const getMapData = unstable_cache(
              coalesce(n.cnt, 0)::int as nobel,
              coalesce(th.cnt, 0)::int as thinkers,
              el.date as el_date, el.body as el_body, el.kind as el_kind, el.econ as el_econ, el.prev as el_prev,
-             op.articles as op_articles, op.theme as op_theme, op.trend as op_trend
+             op.articles as op_articles, op.theme as op_theme, op.trend as op_trend,
+             pu.data as pulse,
+             (select value from country_indicators where country_code = c.code and indicator = 'price_level') as price_level,
+             (select value from country_indicators where country_code = c.code and indicator = 'inflation') as inflation,
+             (select year from country_indicators where country_code = c.code and indicator = 'price_level') as cost_year
       from countries c
+      left join pulse pu on pu.country_code = c.code
       left join governments g on g.country_code = c.code and g.ended_on is null
       left join people p on p.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
       left join government_positions e on e.government_id = g.id and e.dimension = 'econ_lr'
@@ -119,6 +133,10 @@ export const getMapData = unstable_cache(
           }
         : null,
       opinion: x.op_articles ? { articles: x.op_articles, theme: x.op_theme, trend: x.op_trend } : null,
+      pulse: x.pulse?.overall.n
+        ? { left: x.pulse.overall.left, center: x.pulse.overall.center, right: x.pulse.overall.right, mean: x.pulse.overall.mean, prevMean: x.pulse.previous?.mean ?? null, n: x.pulse.overall.n, term: x.pulse.terms[0]?.term ?? null }
+        : null,
+      cost: x.price_level != null || x.inflation != null ? { priceLevel: x.price_level == null ? null : Number(x.price_level), inflation: x.inflation == null ? null : Number(x.inflation), year: x.cost_year } : null,
     }));
   },
   ["map-data"],

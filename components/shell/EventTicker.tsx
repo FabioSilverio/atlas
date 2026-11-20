@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { FeedEvent } from "@/lib/queries";
 import { EVENT_LABEL, fmtDate } from "@/lib/ui/labels";
 
-const POLL_MS = 60_000;
+const POLL_MS = 5 * 60_000;
 
 export function EventTicker({ events: initial, onCountry }: { events: FeedEvent[]; onCountry: (code: string) => void }) {
   const [events, setEvents] = useState(initial);
@@ -16,7 +16,7 @@ export function EventTicker({ events: initial, onCountry }: { events: FeedEvent[
     const tick = async () => {
       if (document.hidden) return;
       try {
-        const res = await fetch("/api/events", { cache: "no-store" });
+        const res = await fetch("/data/events.json", { cache: "no-store" });
         const { events: next } = (await res.json()) as { events: FeedEvent[] };
         if (!alive) return;
         setEvents((prev) => {
@@ -36,7 +36,7 @@ export function EventTicker({ events: initial, onCountry }: { events: FeedEvent[
 
   return (
     <footer className="flex h-8 shrink-0 items-center border-t border-line bg-panel font-mono text-[11.5px]">
-      <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-line px-3 text-amber" title="Atualiza a cada minuto">
+      <div className="flex h-full shrink-0 items-center gap-1.5 border-r border-line px-3 text-amber" title="Atualiza sozinho">
         <span className="live-dot inline-block size-1.5 rounded-full bg-amber" />
         <span className="tracking-widest">FEED</span>
       </div>

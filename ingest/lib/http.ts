@@ -19,6 +19,8 @@ type Meta = { url: string; fetchedAt: string; etag?: string; lastModified?: stri
 
 // Minimum spacing between requests to the same host.
 const HOST_INTERVAL_MS: Record<string, number> = {
+  "www.youtube.com": 150,
+  "trends24.in": 1500,
   "query.wikidata.org": 800,
   "api.nobelprize.org": 300,
   "www.electionguide.org": 2000,

@@ -29,13 +29,13 @@ export async function search(q: string, limit = 30): Promise<SearchHit[]> {
   return rows.map((r) => ({ kind: r.kind, ref: r.ref, title: r.title, subtitle: r.subtitle, url: r.url, countryCode: r.country_code?.trim() ?? null }));
 }
 
-export const KIND_LABEL: Record<string, string> = {
-  country: "País",
-  person: "Pessoa",
-  thinker: "Pensador",
-  party: "Partido",
-  ideology: "Ideologia",
-  theme: "Tema",
-  election: "Eleição",
-  laureate: "Nobel",
-};
+export type IndexRow = [kind: string, ref: string, title: string, subtitle: string | null, url: string, countryCode: string | null, weight: number, norm: string];
+
+/** Compact rows of the whole index, for the in-browser search of the static site. */
+export async function searchIndex(): Promise<IndexRow[]> {
+  const rows = (await db.execute(sql`select kind, ref, title, subtitle, url, country_code, weight, norm from search_index order by weight desc`)) as unknown as {
+    kind: string; ref: string; title: string; subtitle: string | null; url: string; country_code: string | null; weight: string; norm: string;
+  }[];
+  return rows.map((r) => [r.kind, r.ref, r.title, r.subtitle, r.url.replace(/^\/\?pais=([A-Z]{3}).*/, "/pais/$1"), r.country_code?.trim() ?? null, Number(r.weight), r.norm]);
+}
+

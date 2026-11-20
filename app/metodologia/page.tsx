@@ -170,16 +170,52 @@ export default async function Metodologia() {
           </p>
         </Section>
 
-        <Section n="10" title="Atualização">
+        <div id="pulso" />
+        <Section n="10" title="Pulso: quem domina a conversa (estimativa)">
+          <p>
+            De hora em hora o monitor lê, por país: as manchetes das edições nacionais do Google Notícias (seção Nacional e busca por “política”), as tendências do X
+            (trends24.in, com volume aproximado de posts), os posts mais votados do dia nos subreddits nacionais (Wikidata P3984) e os vídeos recentes, com
+            visualizações, dos canais de YouTube de partidos, políticos e da imprensa nacional (canais identificados pelo Wikidata, P2397). Guardamos só título, link,
+            autor/canal, data e a métrica pública; nada é copiado.
+          </p>
+          <p>
+            Cada item é ligado aos partidos e políticos que cita (nomes, siglas e apelidos registrados no Wikidata, nas línguas do país; siglas exigem maiúsculas;
+            sobrenomes comuns não contam). O lado do item é a posição acadêmica do partido citado, pela mesma hierarquia de fontes do mapa; um vídeo do canal de um
+            partido ou político conta para o lado do partido. Partidos sem survey acadêmico recebem uma estimativa pelo alinhamento político registrado no Wikidata,
+            sinalizada. Nenhum modelo de linguagem classifica nada.
+          </p>
+          <p>
+            O termômetro soma os itens das últimas 72 h que têm lado: notícias pesam 1; vídeos, posts e tendências pesam pelo logaritmo de visualizações, votos ou
+            volume, para que um viral não apague o resto. Cada plataforma pesa igual no total. Esquerda é posição ≤ −0,15, direita ≥ +0,15. A comparação é com os 7
+            dias anteriores. Limites: citar não é apoiar (crítica também conta), a cobertura varia muito entre países e plataformas, e o Reddit pode bloquear
+            coletas automáticas.
+          </p>
+          <p>
+            Termos em alta: palavras-chave das manchetes, posts e vídeos das últimas 24 h (72 h para vídeos) comparadas à média diária dos 3 dias anteriores,
+            exigindo ao menos duas fontes diferentes. Vozes no X: contas indicadas pela curadoria do editor, lidas pela API pública do FxTwitter; o campo de cada voz é
+            a indicação do editor, não uma medição.
+          </p>
+        </Section>
+
+        <Section n="11" title="Custo de vida">
+          <p>
+            Nível de preços = fator de paridade de poder de compra do consumo das famílias ÷ câmbio oficial, com os EUA = 100 (Banco Mundial, PA.NUS.PRVT.PP e
+            PA.NUS.FCRF, mesmo ano). Mostra quanto custa, em dólares, a cesta que custa US$ 100 nos EUA. Inflação: índice de preços ao consumidor (FP.CPI.TOTL.ZG).
+            Renda média: PIB per capita ÷ 12, corrente e em paridade de poder de compra; é média por habitante, não salário típico.
+          </p>
+        </Section>
+
+        <Section n="12" title="Atualização">
           <ul className="ml-5 list-disc space-y-1">
-            <li>Diário: governos, posições, Nobel, histórico, eleições (Vercel Cron, região São Paulo).</li>
-            <li>A cada 4 horas: colunas, temas e resumos pela IA local (GitHub Actions).</li>
-            <li>Semanal: pensadores, ideologias e governo em contexto.</li>
-            <li>O feed na base da tela consulta eventos novos a cada minuto.</li>
+            <li>De hora em hora: monitor (notícias, X, Reddit, YouTube), pulso, busca e o site inteiro, reconstruído e publicado pelo GitHub Actions.</li>
+            <li>A cada 3 horas: colunas de opinião; em toda rodada, resumos e teses pela IA local.</li>
+            <li>Diário: governos, posições, Nobel, histórico; eleições.</li>
+            <li>Semanal: pensadores, ideologias, governo em contexto, atores e canais monitorados, custo de vida.</li>
+            <li>O site é estático: as páginas abertas releem os dados novos sozinhas a cada poucos minutos.</li>
           </ul>
         </Section>
 
-        <Section n="11" title="Correções editoriais">
+        <Section n="13" title="Correções editoriais">
           <p>Cada correção sobre os dados automáticos exige justificativa, fonte e data de verificação.</p>
           <ul className="space-y-2 text-[13.5px]">
             {ov.map(([code, o]) => (
@@ -208,7 +244,7 @@ export default async function Metodologia() {
           </ul>
         </Section>
 
-        <Section n="12" title="Fontes">
+        <Section n="14" title="Fontes">
           <ul className="space-y-3">
             {sources.map((s) => (
               <li key={s.id} className="text-[13.5px]">

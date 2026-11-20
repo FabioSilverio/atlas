@@ -3,28 +3,28 @@ import { runJob } from "./lib/job";
 import { log } from "./lib/log";
 import { GROUPS, JOBS, resolveJobs } from "./registry";
 
-async function revalidate() {
-  const base = process.env.REVALIDATE_URL;
-  if (!base) return;
-  try {
-    const res = await fetch(`${base.replace(/\/$/, "")}/api/revalidate`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
-    });
-    log.info(`revalidate → HTTP ${res.status}`);
-  } catch (err) {
-    log.warn(`revalidate falhou: ${(err as Error).message}`);
-  }
-}
-
 async function main() {
   const args = process.argv.slice(2);
-  if (!args.length) {
-    console.log(`uso: npm run ingest -- <job|grupo> [...]\n\njobs: ${JOBS.map((j) => j.name).join(", ")}\ngrupos: ${Object.keys(GROUPS).join(", ")}`);
+  // --keep-going: a failing job is logged and the next ones still run (the hourly pipeline).
+  const keepGoing = args.includes("--keep-going");
+  const names = args.filter((a) => !a.startsWith("--"));
+  if (!names.length) {
+    console.log(`uso: npm run ingest -- [--keep-going] <job|grupo> [...]\n\njobs: ${JOBS.map((j) => j.name).join(", ")}\ngrupos: ${Object.keys(GROUPS).join(", ")}`);
     process.exit(1);
   }
-  for (const job of resolveJobs(args)) await runJob(job);
-  await revalidate();
+  // Each job once, in registry order, however many groups ask for it.
+  const wanted = new Set(resolveJobs(names).map((j) => j.name));
+  const failed: string[] = [];
+  for (const job of JOBS.filter((j) => wanted.has(j.name))) {
+    try {
+      await runJob(job);
+    } catch (err) {
+      if (!keepGoing) throw err;
+      failed.push(job.name);
+      log.error(`${job.name} falhou: ${(err as Error).message}`);
+    }
+  }
+  if (failed.length) log.warn(`jobs com falha: ${failed.join(", ")}`);
 }
 
 main()

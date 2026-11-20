@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { MapCountry } from "@/lib/queries";
 import { LAYERS, type LayerId } from "@/lib/ui/labels";
-import { CONFIDENCE_ALPHA, CONFIDENCE_TEXT, DIVERGING_STOPS, DRIFT_SCALE, NOBEL_BREAKS, OPINION_BREAKS, THINKER_BREAKS, css, divergingColor, sequentialLegend } from "@/lib/ui/palette";
+import { CONFIDENCE_ALPHA, CONFIDENCE_TEXT, COST_BREAKS, DIVERGING_STOPS, DRIFT_SCALE, NOBEL_BREAKS, OPINION_BREAKS, PULSE_SCALE, THINKER_BREAKS, css, divergingColor, sequentialLegend } from "@/lib/ui/palette";
 
 export function LayerPanel({ layer, onLayer, countries }: { layer: LayerId; onLayer: (l: LayerId) => void; countries: MapCountry[] }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -74,6 +74,25 @@ export function LayerPanel({ layer, onLayer, countries }: { layer: LayerId; onLa
                   <NoData label="sem dado acadêmico" n={coverage.conf.none} />
                 </div>
                 <Note>Contornos âmbar marcam territórios disputados. Posição = partido do chefe do executivo, pela melhor fonte acadêmica disponível.</Note>
+              </>
+            )}
+            {layer === "pulse" && (
+              <>
+                <DivergingLegend lo="Conversa cita mais a esquerda" hi="Cita mais a direita" ticks={[`−${PULSE_SCALE}`, "0", `+${PULSE_SCALE}`]} />
+                <div className="mt-3 flex justify-between font-mono text-[11px] text-ink-2">
+                  <span>← {countries.filter((c) => (c.pulse?.mean ?? 0) <= -0.05).length} países</span>
+                  <span>{countries.filter((c) => (c.pulse?.mean ?? 0) >= 0.05).length} países →</span>
+                </div>
+                <Note>
+                  Estimativa, atualizada de hora em hora: manchetes nacionais, tendências do X, Reddit e YouTube das últimas 72 h que citam partidos ou políticos, pesadas pela posição acadêmica de quem é citado
+                  (e pelas visualizações e votos). Mede atenção, não apoio: ser muito citado também pode ser crítica. Cor mais clara = poucos itens.
+                </Note>
+              </>
+            )}
+            {layer === "cost" && (
+              <>
+                <SequentialLegend breaks={COST_BREAKS} />
+                <Note>Quanto custa a mesma cesta de consumo das famílias, em dólares, com os EUA = 100 (paridade de poder de compra ÷ câmbio). Banco Mundial, ano mais recente.</Note>
               </>
             )}
             {layer === "elections" && (

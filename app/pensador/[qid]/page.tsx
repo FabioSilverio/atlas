@@ -3,8 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/dossier/ThinkersSection";
 import { Chips, PageShell, Section } from "@/components/page/PageShell";
-import { getThinker, type ThinkerCard } from "@/lib/knowledge";
+import { allThinkerQids, getThinker, type ThinkerCard } from "@/lib/knowledge";
 import { NOBEL_CATEGORY, fmtDate } from "@/lib/ui/labels";
+
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  return (await allThinkerQids()).map((qid) => ({ qid }));
+}
 
 export async function generateMetadata({ params }: PageProps<"/pensador/[qid]">): Promise<Metadata> {
   const t = await getThinker((await params).qid);
@@ -27,7 +33,7 @@ export default async function ThinkerPage({ params }: PageProps<"/pensador/[qid]
   const maxMentions = Math.max(1, ...t.mentions.map((m) => m.n));
 
   return (
-    <PageShell back={{ href: t.country ? `/?pais=${t.country}&camada=thinkers` : "/", label: "← mapa" }}>
+    <PageShell back={{ href: t.country ? `/pais/${t.country}?camada=thinkers` : "/", label: "← mapa" }}>
       <div className="flex gap-5">
         <div className="shrink-0">
           {t.imageUrl ? (
@@ -161,7 +167,7 @@ export default async function ThinkerPage({ params }: PageProps<"/pensador/[qid]
           <ul className="space-y-1">
             {t.mentions.map((m) => (
               <li key={m.country} className="grid grid-cols-[9rem_1fr_2rem] items-center gap-2 text-[13px]">
-                <Link href={`/?pais=${m.country}`} className="truncate text-ink-2 hover:text-cyan">
+                <Link href={`/pais/${m.country}`} className="truncate text-ink-2 hover:text-cyan">
                   {m.name}
                 </Link>
                 <span className="h-2 bg-cyan-dim" style={{ width: `${(m.n / maxMentions) * 100}%` }} />

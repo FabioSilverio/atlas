@@ -1,5 +1,8 @@
 import { Suspense } from "react";
 import { getDossier, getSources } from "@/lib/queries";
+import { getCountryCost, getPulse } from "@/lib/pulse";
+import { CostSection } from "./CostSection";
+import { PulseSection } from "./PulseSection";
 import { DossierHeader } from "./DossierHeader";
 import { ElectionsSection } from "./ElectionsSection";
 import { GovernmentContext } from "./GovernmentContext";
@@ -19,15 +22,17 @@ function SectionFallback({ label }: { label: string }) {
 }
 
 export async function CountryDossier({ code }: { code: string }) {
-  const [d, sources] = await Promise.all([getDossier(code), getSources()]);
+  const [d, sources, pulse, cost] = await Promise.all([getDossier(code), getSources(), getPulse(code), getCountryCost(code)]);
   if (!d) return <div className="p-6 font-mono text-[12px] text-muted">País não encontrado: {code}</div>;
   return (
     <div className="divide-y divide-line">
       <DossierHeader d={d} />
+      <PulseSection code={code} initial={pulse} />
       <Suspense fallback={<SectionFallback label="Governo em contexto" />}>
         <GovernmentContext code={code} />
       </Suspense>
       <IdeologySection d={d} />
+      <CostSection cost={cost} />
       <Suspense fallback={<SectionFallback label="Eleições e deriva ideológica" />}>
         <ElectionsSection code={code} />
       </Suspense>
@@ -38,7 +43,7 @@ export async function CountryDossier({ code }: { code: string }) {
       <Suspense fallback={<SectionFallback label="Debate de opinião" />}>
         <OpinionSection code={code} />
       </Suspense>
-      <SourcesSection ids={[...d.sourceIds, "wikipedia-elections", "wikipedia"]} sources={sources} d={d} />
+      <SourcesSection ids={[...d.sourceIds, "wikipedia-elections", "wikipedia", ...(pulse ? ["google-news-editions", "x-trends", "youtube", "reddit", "atlas-pulse"] : []), ...(cost ? ["world-bank-wdi"] : [])]} sources={sources} d={d} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapCountry, Stats } from "@/lib/queries";
 import { fmtDate } from "@/lib/ui/labels";
 import { Counter } from "@/components/ui/Counter";
+import { searchLocal } from "@/lib/search-client";
 
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -27,7 +28,7 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
       .filter((c) => fold(c.name).includes(f) || c.code.toLowerCase() === f || (c.chief && fold(c.chief).includes(f)))
       .sort((a, b) => Number(!fold(a.name).startsWith(f)) - Number(!fold(b.name).startsWith(f)))
       .slice(0, 5)
-      .map((c): Hit => ({ kind: "country", ref: c.code, title: c.name, subtitle: c.chief, url: `/?pais=${c.code}`, countryCode: c.code }));
+      .map((c): Hit => ({ kind: "country", ref: c.code, title: c.name, subtitle: c.chief, url: `/pais/${c.code}`, countryCode: c.code }));
   }, [q, countries]);
 
   // Everything else (people, thinkers, ideologies, themes…) from the search index, debounced.
@@ -37,9 +38,8 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
-        const { hits } = (await res.json()) as { hits: Hit[] };
-        setRemote(hits.filter((h) => h.kind !== "country"));
+        const hits = await searchLocal(term, 20);
+        if (!ctrl.signal.aborted) setRemote(hits.filter((h) => h.kind !== "country"));
       } catch {}
     }, 180);
     return () => {

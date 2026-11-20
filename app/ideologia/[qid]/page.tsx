@@ -3,9 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/dossier/ThinkersSection";
 import { PageShell, Section } from "@/components/page/PageShell";
-import { getIdeology } from "@/lib/knowledge";
+import { allIdeologyQids, getIdeology } from "@/lib/knowledge";
 import { fmtNorm } from "@/lib/ui/labels";
 import { css, divergingColor } from "@/lib/ui/palette";
+
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  return (await allIdeologyQids()).map((qid) => ({ qid }));
+}
 
 export async function generateMetadata({ params }: PageProps<"/ideologia/[qid]">): Promise<Metadata> {
   const i = await getIdeology((await params).qid);
@@ -42,7 +48,7 @@ export default async function IdeologyPage({ params }: PageProps<"/ideologia/[qi
           <ul className="space-y-px">
             {i.inPower.map((c) => (
               <li key={c.code}>
-                <Link href={`/?pais=${c.code}`} className="grid grid-cols-[1fr_auto] items-center gap-3 bg-panel-2 px-3 py-1.5 hover:bg-panel-3">
+                <Link href={`/pais/${c.code}`} className="grid grid-cols-[1fr_auto] items-center gap-3 bg-panel-2 px-3 py-1.5 hover:bg-panel-3">
                   <span className="min-w-0">
                     <span className="text-[13.5px] text-ink">{c.country}</span>
                     <span className="ml-2 truncate text-[12px] text-muted">

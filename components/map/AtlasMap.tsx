@@ -7,7 +7,7 @@ import type { Feature, FeatureCollection, Geometry, LineString } from "geojson";
 import type { Topology } from "topojson-specification";
 import type { MapCountry } from "@/lib/queries";
 import type { LayerId } from "@/lib/ui/labels";
-import { CONFIDENCE_ALPHA, DRIFT_SCALE, NO_DATA, NO_GOV, OPINION_BREAKS, THINKER_BREAKS, css, divergingColor, sequentialColor, type RGB } from "@/lib/ui/palette";
+import { CONFIDENCE_ALPHA, DRIFT_SCALE, NO_DATA, NO_GOV, OPINION_BREAKS, COST_BREAKS, PULSE_SCALE, THINKER_BREAKS, css, divergingColor, sequentialColor, type RGB } from "@/lib/ui/palette";
 import { MapTooltip } from "./MapTooltip";
 
 // Keep MapLibre's shared worker pool alive across map instances. Without this,
@@ -49,6 +49,15 @@ export function fillFor(c: MapCountry | undefined, layer: LayerId): { color: RGB
     const col =
       layer === "nobel" ? sequentialColor(c.nobel) : layer === "thinkers" ? sequentialColor(c.thinkers, THINKER_BREAKS) : sequentialColor(c.opinion?.articles ?? 0, OPINION_BREAKS);
     return col ? { color: col, alpha: 1, hatch: false } : { color: NO_DATA, alpha: 1, hatch: false };
+  }
+  if (layer === "pulse") {
+    if (c.pulse?.mean == null) return { color: NO_DATA, alpha: 1, hatch: true };
+    // Few attributable items: lighter, so a handful of headlines does not look like a verdict.
+    return { color: divergingColor(Math.max(-1, Math.min(1, c.pulse.mean / PULSE_SCALE))), alpha: c.pulse.n >= 60 ? 1 : c.pulse.n >= 20 ? 0.8 : 0.55, hatch: false };
+  }
+  if (layer === "cost") {
+    const col = c.cost?.priceLevel != null ? sequentialColor(c.cost.priceLevel, COST_BREAKS) : null;
+    return col ? { color: col, alpha: 1, hatch: false } : { color: NO_DATA, alpha: 1, hatch: true };
   }
   if (layer === "elections") {
     if (!c.election) return { color: NO_DATA, alpha: 1, hatch: false };
@@ -279,7 +288,7 @@ export default function AtlasMap({ countries, layer, selected, onSelect }: Props
     }
     const at = new Map(geo.features.map((f) => [f.properties.code, [f.properties.lx, f.properties.ly] as [number, number]]));
     const ctrl = new AbortController();
-    fetch(`/api/influence?code=${selected}`, { signal: ctrl.signal })
+    fetch(`/data/influence/${selected}.json`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then(({ flows }: { flows: { src: string; dst: string; n: number }[] }) => {
         const features = flows

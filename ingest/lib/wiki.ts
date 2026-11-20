@@ -25,6 +25,30 @@ export async function wikiExtracts(lang: "pt" | "en", titles: string[], sentence
   return out;
 }
 
+/** Wikidata item behind English Wikipedia titles, following redirects; returns title → QID. */
+export async function wikiQids(titles: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (const batch of chunks([...new Set(titles)], 50)) {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&redirects=1&prop=pageprops&ppprop=wikibase_item&titles=${encodeURIComponent(batch.join("|"))}`;
+    type R = { query?: { pages?: { title: string; pageprops?: { wikibase_item?: string } }[]; redirects?: { from: string; to: string }[]; normalized?: { from: string; to: string }[] } };
+    const json = await fetchJson<R>(url, { ttlHours: 24 * 7 });
+    const from = new Map<string, string[]>();
+    const link = (to: string, f: string) => from.set(to, [...(from.get(to) ?? []), f]);
+    for (const n of json.query?.normalized ?? []) link(n.to, n.from);
+    for (const r of json.query?.redirects ?? []) {
+      link(r.to, r.from);
+      for (const f of from.get(r.from) ?? []) link(r.to, f);
+    }
+    for (const p of json.query?.pages ?? []) {
+      const q = p.pageprops?.wikibase_item;
+      if (!q) continue;
+      out.set(p.title, q);
+      for (const f of from.get(p.title) ?? []) out.set(f, q);
+    }
+  }
+  return out;
+}
+
 /** Commons thumbnails with attribution and license, keyed by file name. */
 export async function commonsInfo(files: string[], width = 240): Promise<Map<string, { thumb: string; artist: string | null; license: string | null; page: string }>> {
   const out = new Map<string, { thumb: string; artist: string | null; license: string | null; page: string }>();

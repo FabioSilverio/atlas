@@ -178,5 +178,68 @@
     "license": null,
     "citation": "Correções manuais em data/seed/overrides, cada uma com justificativa e fonte.",
     "version": null
+  },
+  {
+    "id": "youtube",
+    "name": "YouTube — feeds públicos de canais",
+    "publisher": "Google",
+    "url": "https://www.youtube.com/",
+    "license": "Metadados (título, link, visualizações); vídeos não são copiados",
+    "citation": "Feeds RSS públicos dos canais (youtube.com/feeds/videos.xml), canais identificados pelo Wikidata (P2397).",
+    "version": "ao vivo"
+  },
+  {
+    "id": "x-trends",
+    "name": "Tendências do X por país (trends24.in)",
+    "publisher": "trends24.in",
+    "url": "https://trends24.in/",
+    "license": "Referência com link para a fonte",
+    "citation": "Tendências horárias do X (antigo Twitter) por país, agregadas por trends24.in, com volume aproximado de posts.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "reddit",
+    "name": "Reddit — subreddits nacionais",
+    "publisher": "Reddit",
+    "url": "https://www.reddit.com/",
+    "license": "Metadados (título, link, pontuação)",
+    "citation": "Posts mais votados do dia nos subreddits de cada país (Wikidata P3984).",
+    "version": "ao vivo"
+  },
+  {
+    "id": "google-news-editions",
+    "name": "Google Notícias — edições nacionais",
+    "publisher": "Google",
+    "url": "https://news.google.com/",
+    "license": "Metadados (manchete, veículo, data, link)",
+    "citation": "Feeds RSS das edições nacionais do Google Notícias (seção Nacional e principais manchetes).",
+    "version": "ao vivo"
+  },
+  {
+    "id": "atlas-pulse",
+    "name": "ATLAS — Pulso (atenção por lado)",
+    "publisher": "ATLAS",
+    "url": "https://github.com/FabioSilverio/atlas",
+    "license": "Código aberto",
+    "citation": "Estimativa: menções a partidos e políticos ponderadas pela posição acadêmica do partido (CHES, ParlGov, GPS, V-Dem, Herre). Menção não é apoio.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "world-bank-wdi",
+    "name": "Banco Mundial — World Development Indicators",
+    "publisher": "World Bank",
+    "url": "https://data.worldbank.org/",
+    "license": "CC BY 4.0",
+    "citation": "World Bank, World Development Indicators: PA.NUS.PRVT.PP, PA.NUS.FCRF, FP.CPI.TOTL.ZG, NY.GDP.PCAP.CD, NY.GDP.PCAP.PP.CD.",
+    "version": "ao vivo"
+  },
+  {
+    "id": "fxtwitter",
+    "name": "FxTwitter — posts públicos do X",
+    "publisher": "FxEmbed (código aberto)",
+    "url": "https://github.com/FxEmbed/FxEmbed",
+    "license": "Metadados de posts públicos (texto, link, métricas)",
+    "citation": "Posts públicos recentes das vozes curadas, lidos pela API aberta do FxTwitter (api.fxtwitter.com).",
+    "version": "ao vivo"
   }
 ]

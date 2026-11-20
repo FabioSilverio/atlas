@@ -7,11 +7,11 @@
 // Phase 2 — thinkers: for the most notable thinkers without theses, reads the
 //   Wikipedia article (sections about their thought/work) and asks for 3–5
 //   central theses and key concepts.
-// Results go back to the site authenticated with the workflow's GitHub OIDC token.
+// Results go to the pipeline's database through scripts/ai-bridge.ts (localhost).
 //
 // Env: ATLAS_URL, OLLAMA_MODEL (default qwen2.5:3b), AI_LIMIT, THINKER_LIMIT, AI_DEADLINE_MIN.
 
-const SITE = (process.env.ATLAS_URL ?? "https://atlas-six-pied.vercel.app").replace(/\/$/, "");
+const SITE = (process.env.ATLAS_URL ?? "http://127.0.0.1:3999").replace(/\/$/, "");
 const MODEL = process.env.OLLAMA_MODEL ?? "qwen2.5:3b";
 const LIMIT = Number(process.env.AI_LIMIT ?? 60);
 const THINKER_LIMIT = Number(process.env.THINKER_LIMIT ?? 300);
@@ -20,14 +20,6 @@ const DEADLINE = START + Number(process.env.AI_DEADLINE_MIN ?? 150) * 60_000;
 // Opinion pieces get at most a third of the run; thinkers use the rest.
 const ARTICLE_DEADLINE = START + (DEADLINE - START) / 3;
 const UA = "ATLAS/0.1 (+https://github.com/FabioSilverio/atlas)";
-
-async function oidcToken() {
-  const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
-  const bearer = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
-  if (!url || !bearer) throw new Error("sem token OIDC: o workflow precisa de permissions.id-token = write");
-  const res = await fetch(`${url}&audience=atlas-ingest`, { headers: { Authorization: `Bearer ${bearer}` } });
-  return (await res.json()).value;
-}
 
 const strip = (html) =>
   html
@@ -55,7 +47,7 @@ const clip = (s, n) => (typeof s === "string" ? s.trim().slice(0, n) : null);
 async function post(path, body) {
   const res = await fetch(`${SITE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${await oidcToken()}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   console.log(`→ ${path} ${body.items.length}: HTTP ${res.status} ${await res.text()}`);

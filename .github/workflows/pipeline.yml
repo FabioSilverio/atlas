@@ -1,0 +1,124 @@
+# The whole ATLAS, every hour, on free GitHub-hosted runners (public repository):
+#   1. restore the database (a snapshot kept as a release asset) into a throwaway Postgres;
+#   2. run the ingestion due this hour (monitor + pulse always; the rest on its schedule);
+#   3. let the free local model (Ollama, Qwen 2.5) summarise articles and thinkers;
+#   4. save the database snapshot back;
+#   5. rebuild the static site and publish it on GitHub Pages (the Vercel domain proxies it).
+# No secrets: the database lives inside the run, and GITHUB_TOKEN covers releases and Pages.
+name: pipeline
+
+on:
+  schedule:
+    - cron: "12 * * * *"
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: "jobs ou grupos extras nesta execução (ex.: all, daily, monitor-setup)"
+        default: ""
+      bootstrap:
+        description: "primeira execução: aceitar a ausência de snapshot"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: atlas
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      DATABASE_URL: postgres://postgres@localhost:5432/atlas
+      DATABASE_URL_UNPOOLED: postgres://postgres@localhost:5432/atlas
+      GH_TOKEN: ${{ github.token }}
+      OLLAMA_MODEL: qwen2.5:3b
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Cache HTTP (respeita os limites das fontes)
+        uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: http-${{ github.run_id }}
+          restore-keys: http-
+
+      - name: Restaurar o banco
+        run: |
+          npx drizzle-kit push --force
+          if gh release download db --pattern atlas-db.tar.gz --dir /tmp/db; then
+            mkdir -p /tmp/snap && tar -xzf /tmp/db/atlas-db.tar.gz -C /tmp/snap
+            npx tsx scripts/db-snapshot.ts import /tmp/snap
+          elif [ "${{ inputs.bootstrap }}" != "true" ]; then
+            echo "::error::snapshot do banco não encontrado (release 'db')"
+            exit 1
+          fi
+
+      - name: Coleta desta hora
+        run: |
+          GROUPS="$(node scripts/schedule.mjs) ${{ inputs.jobs }}"
+          echo "grupos: $GROUPS"
+          npx tsx ingest/run.ts --keep-going $GROUPS
+
+      - name: Cache do modelo local
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ env.OLLAMA_MODEL }}
+      - name: IA local (resumos, teses e pensadores)
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          AI_LIMIT: "40"
+          THINKER_LIMIT: "80"
+          AI_DEADLINE_MIN: "22"
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 1; done
+          ollama pull "$OLLAMA_MODEL"
+          npx tsx scripts/ai-bridge.ts > /tmp/bridge.log 2>&1 &
+          for i in $(seq 1 60); do curl -s "http://127.0.0.1:3999/api/ai/pending?limit=1" >/dev/null && break; sleep 1; done
+          node scripts/ai-worker.mjs
+          npx tsx ingest/run.ts --keep-going themes search
+
+      - name: Salvar o banco
+        run: |
+          npx tsx scripts/db-snapshot.ts export /tmp/out-db
+          tar -czf /tmp/atlas-db.tar.gz -C /tmp/out-db .
+          gh release view db >/dev/null 2>&1 || gh release create db --prerelease --title "Banco do ATLAS" --notes "Snapshot horário do banco (dados públicos), restaurado e salvo pelo pipeline."
+          gh release upload db /tmp/atlas-db.tar.gz --clobber
+
+      - name: Montar o site
+        run: |
+          npx next build
+          node scripts/flatten-rsc.mjs out
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - id: deploy
+        uses: actions/deploy-pages@v4

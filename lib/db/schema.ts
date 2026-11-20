@@ -563,3 +563,120 @@ export const searchIndex = pgTable(
   },
   (t) => [primaryKey({ columns: [t.kind, t.ref] })],
 );
+
+// ── Phase 6: live monitoring (news, X trends, Reddit, YouTube) ──
+
+// Political actors whose mentions we can attribute to a side: parties from recent
+// elections and their notable members. The position is the party's academic
+// score (same hierarchy as everywhere else); never inferred from text.
+export const actors = pgTable(
+  "actors",
+  {
+    id: serial("id").primaryKey(),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    kind: text("kind").notNull(), // party | person
+    qid: text("qid"),
+    name: text("name").notNull(),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]), // accent-free lowercase
+    partyLabel: text("party_label"),
+    econ: numeric("econ"),
+    galtan: numeric("galtan"),
+    scoreSource: text("score_source"),
+    sitelinks: integer("sitelinks"),
+    ...provenance,
+  },
+  (t) => [uniqueIndex("actors_unique").on(t.countryCode, t.kind, t.name), index("actors_country_idx").on(t.countryCode)],
+);
+
+// YouTube channels per country (Wikidata P2397): parties, politicians and news media.
+export const channels = pgTable(
+  "channels",
+  {
+    channelId: text("channel_id").primaryKey(),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    ownerQid: text("owner_qid"),
+    ownerName: text("owner_name").notNull(),
+    ownerKind: text("owner_kind").notNull(), // party | politician | media
+    econ: numeric("econ"), // only for party/politician channels, from the party's academic score
+    leanBasis: text("lean_basis"),
+    sitelinks: integer("sitelinks"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    ...provenance,
+  },
+  (t) => [index("channels_country_idx").on(t.countryCode)],
+);
+
+// Everything the monitor sees: headlines, X trends, Reddit posts, YouTube videos.
+// Metadata only (title, link, author, date, a public metric), never full text.
+export const signals = pgTable(
+  "signals",
+  {
+    id: serial("id").primaryKey(),
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    platform: text("platform").notNull(), // news | x | reddit | youtube
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    author: text("author"), // outlet, channel, subreddit
+    channelId: text("channel_id"),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+    metric: numeric("metric"), // views | score | post volume | rank
+    metricKind: text("metric_kind"),
+    terms: jsonb("terms").$type<string[]>().notNull().default([]),
+    actorIds: jsonb("actor_ids").$type<number[]>().notNull().default([]),
+    econ: numeric("econ"), // side of the item, from mentioned actors or the channel owner
+    leanBasis: text("lean_basis"),
+    seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+    sourceId: text("source_id").references(() => sources.id),
+  },
+  (t) => [uniqueIndex("signals_unique").on(t.platform, t.countryCode, t.url), index("signals_country_time").on(t.countryCode, t.publishedAt)],
+);
+
+// The current "pulse" of each country, recomputed every run; history keeps one row per day.
+export type PulseItem = { title: string; url: string; author: string | null; platform: string; metric: number | null; metricKind: string | null; publishedAt: string; econ: number | null; videoId?: string };
+export type PulseTerm = { term: string; count: number; previous: number; platforms: Record<string, number>; econ: number | null; items: PulseItem[] };
+export type PulseSide = { left: number; center: number; right: number; n: number; mean: number | null };
+export type Pulse = {
+  window: string;
+  overall: PulseSide;
+  previous: PulseSide | null;
+  byPlatform: Record<string, PulseSide>;
+  youtubeChannels: PulseSide | null; // view share of party/politician channels by side
+  terms: PulseTerm[];
+  videos: PulseItem[];
+  xTrends: { term: string; volume: number | null; url: string; political: boolean }[];
+  reddit: PulseItem[];
+  headlines: PulseItem[];
+  voices: PulseItem[]; // recent posts of editor-curated voices on X
+  counts: Record<string, number>;
+};
+export const pulse = pgTable("pulse", {
+  countryCode: char("country_code", { length: 3 }).primaryKey(),
+  data: jsonb("data").$type<Pulse>().notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const pulseHistory = pgTable(
+  "pulse_history",
+  {
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    day: date("day").notNull(),
+    left: numeric("left"),
+    center: numeric("center"),
+    right: numeric("right"),
+    mean: numeric("mean"),
+    n: integer("n").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.countryCode, t.day] })],
+);
+
+// Cost of living and income per country (World Bank WDI), most recent year available.
+export const countryIndicators = pgTable(
+  "country_indicators",
+  {
+    countryCode: char("country_code", { length: 3 }).notNull(),
+    indicator: text("indicator").notNull(), // price_level | inflation | gdp_pc | gdp_pc_ppp
+    value: numeric("value").notNull(),
+    year: integer("year").notNull(),
+    ...provenance,
+  },
+  (t) => [primaryKey({ columns: [t.countryCode, t.indicator] })],
+);

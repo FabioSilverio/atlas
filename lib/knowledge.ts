@@ -463,3 +463,13 @@ export const getCountryOpinion = unstable_cache(
   ["country-opinion"],
   CACHE,
 );
+
+// ── Static export: every page to prebuild ──────────────────────
+
+export async function allThinkerQids(): Promise<string[]> {
+  return (await rows<{ qid: string }>(sql`select p.wikidata_qid as qid from thinkers t join people p on p.id = t.person_id where p.wikidata_qid is not null`)).map((r) => r.qid);
+}
+
+export async function allIdeologyQids(): Promise<string[]> {
+  return (await rows<{ qid: string }>(sql`select qid from ideologies`)).map((r) => r.qid);
+}

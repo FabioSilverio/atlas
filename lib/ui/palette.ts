@@ -37,6 +37,9 @@ const SEQ = ["#104281", "#1c5cab", "#2a78d6", "#5598e7", "#86b6ef", "#b7d3f6"].m
 export const NOBEL_BREAKS = [1, 3, 10, 30, 100, 300];
 export const THINKER_BREAKS = [1, 3, 6, 12, 24, 40];
 export const OPINION_BREAKS = [1, 10, 30, 100, 300, 1000];
+export const COST_BREAKS = [20, 35, 50, 65, 85, 110];
+/** The pulse mean rarely leaves ±0.5: stretch it to use the whole diverging ramp. */
+export const PULSE_SCALE = 0.5;
 export function sequentialColor(count: number, breaks: number[] = NOBEL_BREAKS): RGB | null {
   if (count <= 0) return null;
   let i = breaks.findIndex((b) => count < b) - 1;
