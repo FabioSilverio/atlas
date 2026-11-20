@@ -143,3 +143,37 @@ jobs:
         uses: actions/deploy-pages@v4
       - id: deploy
         run: echo "page_url=${{ steps.deploy_first.outputs.page_url || steps.deploy_retry.outputs.page_url }}" >> "$GITHUB_OUTPUT"
+
+  # Keeps the hourly rhythm even when GitHub's scheduler skips this workflow (it fired no
+  # scheduled run for this repository on its first day). Waits for the next :12 and starts
+  # the next run with the built-in token, unless another run (scheduled or manual) already
+  # started meanwhile. No personal token: GITHUB_TOKEN may dispatch workflow runs.
+  next:
+    needs: run
+    if: ${{ always() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Agendar a próxima execução
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          started=$(gh run view "$RUN_ID" -R "$REPO" --json createdAt --jq .createdAt)
+          now=$(date +%s)
+          target=$(( now / 3600 * 3600 + 12 * 60 ))
+          while [ "$target" -le "$now" ]; do target=$(( target + 3600 )); done
+          echo "próxima execução às $(date -u -d "@$target" +%H:%M) UTC"
+          sleep $(( target - now ))
+          newer=$(gh run list -R "$REPO" -w pipeline -L 10 --json databaseId,createdAt \
+            --jq "[.[] | select(.databaseId != $RUN_ID and .createdAt > \"$started\")] | length")
+          if [ "$newer" -gt 0 ]; then
+            echo "outra execução já começou depois desta; nada a fazer"
+          else
+            gh workflow run pipeline -R "$REPO" --ref main
+            echo "próxima execução disparada"
+          fi

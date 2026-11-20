@@ -75,7 +75,10 @@ describe("auditCountry", () => {
 
   it("flags a big party left without a position in the latest vote", () => {
     const issues = auditCountry({ ...base, elections: [senate2026] });
-    expect(issues.some((i) => /Liberal Party \(36%\) sem posição/.test(i.message))).toBe(true);
+    expect(issues.some((i) => i.severity === "aviso" && /Liberal Party com 36% sem posição/.test(i.message))).toBe(true);
+    // Independents never count as a gap.
+    const indep = election({ ...senate2026, results: [row({ party: "Independents", seats: 60 })] });
+    expect(auditCountry({ ...base, elections: [indep] }).some((i) => /Independents/.test(i.message))).toBe(false);
   });
 
   it("flags a count left open for weeks and a past 'next election'", () => {

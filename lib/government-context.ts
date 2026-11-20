@@ -169,8 +169,11 @@ export function auditCountry(c: AuditInput): AuditIssue[] {
     const seatTotal = e.totalSeats ?? e.results.reduce((a, r) => a + (r.seats ?? 0), 0);
     for (const r of e.results) {
       const weight = e.kind === "legislative" && seatTotal ? ((r.seats ?? 0) / seatTotal) * 100 : (r.share ?? 0);
-      if (weight >= 10 && r.econ == null)
-        add("erro", `${e.kind === "presidential" ? "Presidencial" : e.body} de ${e.date}: ${partyLabel(r.candidate ?? r.party)} (${weight.toFixed(0)}%) sem posição ideológica — a média fica distorcida`);
+      // Independents and unnamed rows have no position by definition. A gap is shown as "—"
+      // on the page (not a wrong fact), so this is a coverage warning, not an error.
+      const label = partyLabel(r.party || r.candidate || "");
+      if (weight >= 10 && r.econ == null && !/^(independents?|non-?partisan|[–—-]|#\d+)?$/i.test(label.trim()))
+        add("aviso", `${e.kind === "presidential" ? "Presidencial" : e.body} de ${e.date}: ${label}${r.candidate && r.candidate !== label ? ` (${r.candidate})` : ""} com ${weight.toFixed(0)}% sem posição acadêmica`);
     }
   }
 
