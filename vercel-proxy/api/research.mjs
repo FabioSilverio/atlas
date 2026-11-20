@@ -235,7 +235,7 @@ async function searchReddit(q) {
       body: (p.selftext ?? "").slice(0, 3500),
       context: comments.filter((c) => c.body && !/^\[(removed|deleted)\]$/i.test(c.body))
         .slice(0, 24).map((c) => ({
-          label: c.parent_id?.startsWith("t1_") ? `Resposta ao coment?rio ${c.parent_id.slice(3)}` : "Coment?rio",
+          label: c.parent_id?.startsWith("t1_") ? `Resposta ao comentário ${c.parent_id.slice(3)}` : "Comentário",
           text: c.body.slice(0, 3500),
           author: c.author ?? null,
           url: `${url.replace(/\/$/, "")}/${c.id}/`,
@@ -248,15 +248,15 @@ async function searchReddit(q) {
 async function searchBackground(q) {
   const subject = q.replaceAll('"', " ");
   const sources = await Promise.all([
-    fetchGNewsRss(`"${subject}" ("pai" OR "fam?lia" OR "irm?os")`),
-    fetchGNewsRss(`"${subject}" ("igreja" OR "religi?o")`),
+    fetchGNewsRss(`"${subject}" ("pai" OR "família" OR "irmãos")`),
+    fetchGNewsRss(`"${subject}" ("igreja" OR "religião")`),
   ]);
   const editorial = /^felipe (?:campos )?sestaro$/i.test(subject) ? [{
     title: "Quem ? Felipe Sestaro",
     source: "Gazeta do Povo",
     url: "https://www.gazetadopovo.com.br/vida-e-cidadania/apresentador-felipe-sestaro-ganha-projecao-com-embates-politicos-no-irontalks/",
     publishedAt: null,
-    extract: "A reportagem relata que Felipe Sestaro atuou como mission?rio evang?lico da igreja Bola de Neve durante o per?odo em que viveu na R?ssia.",
+    extract: "A reportagem relata que Felipe Sestaro atuou como missionário evangélico da igreja Bola de Neve durante o período em que viveu na Rússia.",
   }] : [];
   return [...editorial, ...new Map(sources.flat().map((item) => [item.title, item])).values()].slice(0, 10);
 }
