@@ -271,16 +271,24 @@ type FxStatus = { id: string; url: string; text: string; created_timestamp: numb
  * and what was collected stays for 30 days. Only the account's own posts count.
  */
 async function xVoices(out: Signal[], tag: (code: string, t: string) => { actorIds: number[]; econ: string | null; leanBasis: string | null }, bump: (k: string, n?: number) => void) {
-  const all = (voices as Voice[]).filter((v) => v.x);
-  if (!all.length) return;
-  const perRun = process.env.MONITOR_ALL_VOICES === "1" ? all.length : Number(process.env.MONITOR_VOICES_PER_RUN ?? 50);
-  const cursor = await getState<number>("monitor.xVoiceCursor", 0);
+  const filterCountry = process.env.MONITOR_VOICES_COUNTRY?.toUpperCase();
+  const raw = (voices as Voice[]).filter((v) => v.x && (!filterCountry || v.country === filterCountry));
+  if (!raw.length) return;
+  // Interleave by country so each hourly batch refreshes a balanced mix across countries.
+  const byCountry = new Map<string, Voice[]>();
+  for (const v of raw) byCountry.set(v.country, [...(byCountry.get(v.country) ?? []), v]);
+  const groups = [...byCountry.values()];
+  const all: Voice[] = [];
+  for (let idx = 0; all.length < raw.length; idx++) for (const g of groups) if (idx < g.length) all.push(g[idx]);
+
+  const perRun = process.env.MONITOR_ALL_VOICES === "1" ? all.length : Number(process.env.MONITOR_VOICES_PER_RUN ?? 80);
+  const cursor = filterCountry ? 0 : await getState<number>("monitor.xVoiceCursor", 0);
   const start = cursor % all.length;
   const batch: Voice[] = [];
   for (let i = 0; i < Math.min(perRun, all.length); i++) batch.push(all[(start + i) % all.length]);
-  await pool(batch, 4, async (v) => {
+  await pool(batch, 6, async (v) => {
     try {
-      const res = await fetch(`https://api.fxtwitter.com/2/profile/${v.x}/statuses`, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(20_000) });
+      const res = await fetch(`https://api.fxtwitter.com/2/profile/${v.x}/statuses`, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(18_000) });
       if (!res.ok) {
         bump("xVoicesUnavailable");
         return;
@@ -297,12 +305,12 @@ async function xVoices(out: Signal[], tag: (code: string, t: string) => { actorI
         });
         bump("xVoices");
       }
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 150));
     } catch (err) {
       bump("xVoicesFailed");
       log.warn(`X @${v.x}: ${(err as Error).message}`);
     }
   });
-  await setState("monitor.xVoiceCursor", (start + batch.length) % all.length);
+  if (!filterCountry) await setState("monitor.xVoiceCursor", (start + batch.length) % all.length);
   log.info(`monitor: vozes X ${batch.length}/${all.length} contas`);
 }
