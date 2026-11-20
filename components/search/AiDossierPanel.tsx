@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Hit } from "@/lib/search-client";
 import {
   gatherDossierEvidence,
+  mergeDossierEvidence,
   streamOllamaDossier,
   streamWebGPUDossier,
   WEBGPU_MODELS,
@@ -38,7 +39,7 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
   const [researchError, setResearchError] = useState(false);
 
   async function generate() {
-      if (quick || !evidence) return;
+    if (quick || !evidence) return;
     const ev = { ...evidence, atlasHits: hits.slice(0, 16) };
     abortRef.current?.abort();
     const ctrl = new AbortController();
@@ -84,19 +85,23 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
   }
 
   useEffect(() => {
-    let alive = true;
-    gatherDossierEvidence(query, [], quick && !expanded).then((ev) => {
-      if (!alive) return;
-      if (ev.liveOk || !expanded) setEvidence(ev);
+    const request = new AbortController();
+    gatherDossierEvidence(query, {
+      quick: quick && !expanded,
+      includeRecent: !quick,
+      signal: request.signal,
+    }).then((ev) => {
+      if (request.signal.aborted) return;
+      setEvidence((previous) => mergeDossierEvidence(previous, ev));
       setResearchError(!ev.liveOk);
       setUpdating(false);
     }).catch(() => {
-      if (!alive) return;
+      if (request.signal.aborted) return;
       setResearchError(true);
       setUpdating(false);
     });
     return () => {
-      alive = false;
+      request.abort();
       abortRef.current?.abort();
     };
   }, [query, quick, expanded, retry]);
@@ -249,14 +254,19 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
         </div>
       )}
 
-      {(researchError || (evidence && totalLive === 0)) && (
-        <p role="status" className="mt-4 text-sm text-muted">
-          {researchError ? "A pesquisa ao vivo está indisponível agora." : "Nenhuma fonte encontrada para este termo."}
-          {researchError && <button type="button" className="ml-2 min-h-11 text-cyan"
+      {!updating && (researchError || evidence?.partial || (evidence && totalLive === 0)) && (
+        <div className="mt-4 text-sm text-muted">
+          <p role="status">
+            {researchError
+              ? totalLive > 0 ? "A atualização falhou. Os resultados anteriores continuam abaixo." : "A pesquisa ao vivo está indisponível agora."
+              : evidence?.partial ? "Algumas fontes ficaram indisponíveis. A pesquisa mostra as fontes que responderam."
+              : "Nenhuma fonte encontrada para este termo."}
+          </p>
+          {(researchError || evidence?.partial) && <button type="button" className="min-h-11 text-cyan"
             onClick={() => { setResearchError(false); setUpdating(Boolean(evidence)); setRetry((n) => n + 1); }}>
             Tentar novamente
           </button>}
-        </p>
+        </div>
       )}
 
       {quick && !expanded && !loadingEv && (

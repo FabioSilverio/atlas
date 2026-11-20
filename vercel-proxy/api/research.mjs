@@ -29,7 +29,7 @@ function parseViewNum(text = "") {
   return Math.round(n);
 }
 
-async function searchYouTube(q, contextSearch = false) {
+async function searchYouTube(upstream, q, contextSearch = false) {
   // Fetch both most-viewed (CAMSAhAB) and most-relevant searches in parallel.
   const urls = [
     `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=CAMSAhAB`,
@@ -41,7 +41,7 @@ async function searchYouTube(q, contextSearch = false) {
   await Promise.all(
     urls.map(async (url) => {
       try {
-        const res = await fetch(url, {
+        const res = await upstream(url, {
           headers: { "User-Agent": UA, "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7" },
           signal: AbortSignal.timeout(7000),
         });
@@ -92,10 +92,10 @@ async function searchYouTube(q, contextSearch = false) {
   return (contextSearch ? out : out.sort((a, b) => (b.views ?? 0) - (a.views ?? 0))).slice(0, 14);
 }
 
-async function fetchGNewsRss(query, hl = "pt-BR", gl = "BR", ceid = "BR:pt-419") {
+async function fetchGNewsRss(upstream, query, hl = "pt-BR", gl = "BR", ceid = "BR:pt-419") {
   try {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
-    const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) });
+    const res = await upstream(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) });
     if (!res.ok) return [];
     const xml = await res.text();
     const out = [];
@@ -121,10 +121,10 @@ async function fetchGNewsRss(query, hl = "pt-BR", gl = "BR", ceid = "BR:pt-419")
   }
 }
 
-async function searchNews(q) {
+async function searchNews(upstream, q) {
   const [br, en] = await Promise.all([
-    fetchGNewsRss(q, "pt-BR", "BR", "BR:pt-419"),
-    fetchGNewsRss(q, "en-US", "US", "US:en"),
+    fetchGNewsRss(upstream, q, "pt-BR", "BR", "BR:pt-419"),
+    fetchGNewsRss(upstream, q, "en-US", "US", "US:en"),
   ]);
   const seen = new Set();
   const out = [];
@@ -143,9 +143,9 @@ const FX = "https://api.fxtwitter.com/2";
 const REDDIT = "https://arctic-shift.photon-reddit.com/api";
 const DAY_MS = 86_400_000;
 
-async function fetchJson(url, timeout = 6000) {
+async function fetchJson(upstream, url, timeout = 6000) {
   try {
-    const response = await fetch(url, {
+    const response = await upstream(url, {
       headers: { "User-Agent": ATLAS_UA },
       signal: AbortSignal.timeout(timeout),
     });
@@ -156,12 +156,13 @@ async function fetchJson(url, timeout = 6000) {
 }
 
 function postDate(seconds) {
-  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null;
+  const date = new Date(seconds * 1000);
+  return Number.isFinite(seconds) && Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 function xPost(p) {
   const author = p?.author?.screen_name;
-  if (!p?.text || !author || !/^\d+$/.test(p.id)) return null;
+  if (typeof p?.text !== "string" || !p.text || !author || !/^\d+$/.test(p.id)) return null;
   return {
     title: p.text.replace(/\s+/g, " ").slice(0, 320),
     body: p.text.slice(0, 3500),
@@ -172,14 +173,14 @@ function xPost(p) {
   };
 }
 
-async function searchX(q, quick = false) {
+async function searchX(upstream, q, quick = false) {
   const handle = /^@[a-z0-9_]{2,25}$/i.test(q) ? q.slice(1) : null;
   const search = handle ? `from:${handle} OR @${handle}` : `"${q.replaceAll('"', " ")}"`;
   const directId = q.match(/^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(?:[a-z0-9_]+|i\/web)\/status\/(\d{2,20})(?:[/?#]|$)/i)?.[1];
-  const direct = directId ? await fetchJson(`${FX}/conversation/${directId}`) : null;
-  const data = directId ? { results: [direct?.status] } : await fetchJson(`${FX}/search?${new URLSearchParams({ q: search, feed: "latest", count: "16" })}`);
+  const direct = directId ? await fetchJson(upstream, `${FX}/conversation/${directId}`) : null;
+  const data = directId ? { results: [direct?.status] } : await fetchJson(upstream, `${FX}/search?${new URLSearchParams({ q: search, feed: "latest", count: "16" })}`);
   const seen = new Set();
-  const matches = (data?.results ?? []).filter((p) => {
+  const matches = (Array.isArray(data?.results) ? data.results : []).filter((p) => {
     if (!xPost(p) || seen.has(p.id)) return false;
     seen.add(p.id);
     return true;
@@ -187,13 +188,13 @@ async function searchX(q, quick = false) {
 
   return Promise.all(matches.map(async (p) => {
     const post = xPost(p);
-    const conversation = direct ?? (quick ? null : await fetchJson(`${FX}/conversation/${p.id}`, 5000));
+    const conversation = direct ?? (quick ? null : await fetchJson(upstream, `${FX}/conversation/${p.id}`, 5000));
     const main = conversation?.status ?? p;
     const used = new Set([p.id]);
     const context = [
-      ...(conversation?.thread ?? []).map((entry) => ["Na conversa", entry]),
+      ...(Array.isArray(conversation?.thread) ? conversation.thread : []).map((entry) => ["Na conversa", entry]),
       ["Post citado", main.quote],
-      ...(conversation?.replies ?? []).map((entry) => ["Resposta", entry]),
+      ...(Array.isArray(conversation?.replies) ? conversation.replies : []).map((entry) => ["Resposta", entry]),
     ].flatMap(([label, entry]) => {
       const item = xPost(entry);
       if (!item || used.has(entry.id)) return [];
@@ -209,26 +210,26 @@ async function searchX(q, quick = false) {
   }));
 }
 
-async function searchReddit(q, quick = false) {
+async function searchReddit(upstream, q, quick = false) {
   const subs = ["brasil", "brasilivre", "politics", "worldnews", "argentina", "portugal"];
   const cutoff = Date.now() - 90 * DAY_MS;
   const after = new Date(cutoff).toISOString().slice(0, 10);
   const lists = await Promise.all(subs.map(async (subreddit) => {
     const params = new URLSearchParams({ subreddit, title: q, after, limit: "8", sort: "desc" });
-    const result = await fetchJson(`${REDDIT}/posts/search?${params}`);
-    return result?.data ?? [];
+    const result = await fetchJson(upstream, `${REDDIT}/posts/search?${params}`);
+    return Array.isArray(result?.data) ? result.data : [];
   }));
 
   const posts = lists.flat().filter((p) =>
-    p.title && p.permalink?.startsWith("/") && /^[a-z0-9]+$/.test(p.id) &&
+    typeof p?.title === "string" && typeof p.permalink === "string" && p.permalink.startsWith("/") && /^[a-z0-9]+$/.test(p.id) &&
     !p.removed_by_category && p.created_utc * 1000 >= cutoff,
   ).sort((a, b) => b.created_utc - a.created_utc).slice(0, 10);
 
   return Promise.all(posts.map(async (p) => {
     const url = `https://www.reddit.com${p.permalink}`;
     const params = new URLSearchParams({ link_id: `t3_${p.id}`, limit: "50", sort: "asc" });
-    const result = quick ? null : await fetchJson(`${REDDIT}/comments/search?${params}`, 5000);
-    const comments = result?.data ?? [];
+    const result = quick ? null : await fetchJson(upstream, `${REDDIT}/comments/search?${params}`, 5000);
+    const comments = Array.isArray(result?.data) ? result.data : [];
     return {
       title: p.title.slice(0, 280),
       subreddit: `r/${p.subreddit}`,
@@ -236,10 +237,10 @@ async function searchReddit(q, quick = false) {
       comments: p.num_comments ?? null,
       url,
       publishedAt: postDate(p.created_utc),
-      body: (p.selftext ?? "").slice(0, 3500),
-      context: comments.filter((c) => c.body && !/^\[(removed|deleted)\]$/i.test(c.body))
+      body: typeof p.selftext === "string" ? p.selftext.slice(0, 3500) : "",
+      context: comments.filter((c) => typeof c?.body === "string" && c.body && !/^\[(removed|deleted)\]$/i.test(c.body))
         .slice(0, 24).map((c) => ({
-          label: c.parent_id?.startsWith("t1_") ? `Resposta ao comentário ${c.parent_id.slice(3)}` : "Comentário",
+          label: typeof c.parent_id === "string" && c.parent_id.startsWith("t1_") ? `Resposta ao comentário ${c.parent_id.slice(3)}` : "Comentário",
           text: c.body.slice(0, 3500),
           author: c.author ?? null,
           url: `${url.replace(/\/$/, "")}/${c.id}/`,
@@ -253,7 +254,7 @@ function normalizeSearchText(value) {
   return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 }
 
-async function readVideoEvidence(video, query) {
+async function readVideoEvidence(upstream, video, query) {
   const source = {
     title: video.title,
     source: video.channel || "YouTube",
@@ -262,7 +263,7 @@ async function readVideoEvidence(video, query) {
   };
   let extract = video.description ? `Trecho da descrição indexada do canal: ${video.description}` : null;
   try {
-    const response = await fetch(video.url, {
+    const response = await upstream(video.url, {
       headers: { "User-Agent": UA, "Accept-Language": "pt-BR" },
       signal: AbortSignal.timeout(3500),
     });
@@ -286,7 +287,7 @@ async function readVideoEvidence(video, query) {
       return { ...source, extract };
     }
     captionUrl.searchParams.set("fmt", "json3");
-    const captionsResponse = await fetch(captionUrl, {
+    const captionsResponse = await upstream(captionUrl, {
       headers: { "User-Agent": UA },
       redirect: "error",
       signal: AbortSignal.timeout(3500),
@@ -319,10 +320,10 @@ async function readVideoEvidence(video, query) {
   }
 }
 
-async function searchVideoBackground(q, mainVideos) {
+async function searchVideoBackground(upstream, q, mainVideos) {
   const [documentary, interview, main] = await Promise.all([
-    searchYouTube(`${q} dossiê documentário`, true),
-    searchYouTube(`${q} entrevista história`, true),
+    searchYouTube(upstream, `${q} dossiê documentário`, true),
+    searchYouTube(upstream, `${q} entrevista história`, true),
     mainVideos,
   ]);
   const keywords = normalizeSearchText(q).match(/[a-z0-9]{3,}/g) ?? [];
@@ -336,15 +337,15 @@ async function searchVideoBackground(q, mainVideos) {
     selected.set(video.id, video);
     if (selected.size >= 3) break;
   }
-  const sources = await Promise.all([...selected.values()].map((video) => readVideoEvidence(video, q)));
+  const sources = await Promise.all([...selected.values()].map((video) => readVideoEvidence(upstream, video, q)));
   return sources.sort((a, b) => Number(Boolean(b.extract)) - Number(Boolean(a.extract)));
 }
 
-async function searchBackground(q) {
+async function searchBackground(upstream, q) {
   const subject = q.replaceAll('"', " ");
   const sources = await Promise.all([
-    fetchGNewsRss(`"${subject}" ("pai" OR "família" OR "irmãos")`),
-    fetchGNewsRss(`"${subject}" ("igreja" OR "religião")`),
+    fetchGNewsRss(upstream, `"${subject}" ("pai" OR "família" OR "irmãos")`),
+    fetchGNewsRss(upstream, `"${subject}" ("igreja" OR "religião")`),
   ]);
   const editorial = /^felipe (?:campos )?sestaro$/i.test(subject) ? [{
     title: "Quem é Felipe Sestaro",
@@ -374,10 +375,10 @@ async function searchBackground(q) {
   return [...editorial, ...new Map(sources.flat().map((item) => [item.title, item])).values()].slice(0, 10);
 }
 
-async function searchWiki(q) {
+async function searchWiki(upstream, q) {
   const fetchLang = async (lang) => {
     try {
-      const sr = await fetch(
+      const sr = await upstream(
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=2&format=json`,
         { headers: { "User-Agent": ATLAS_UA }, signal: AbortSignal.timeout(6000) },
       );
@@ -385,7 +386,7 @@ async function searchWiki(q) {
       const sj = await sr.json();
       const titles = (sj.query?.search ?? []).map((x) => x.title);
       if (!titles.length) return [];
-      const er = await fetch(
+      const er = await upstream(
         `https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts|info&exintro=1&explaintext=1&inprop=url&titles=${encodeURIComponent(titles.join("|"))}&format=json`,
         { headers: { "User-Agent": ATLAS_UA }, signal: AbortSignal.timeout(6000) },
       );
@@ -409,7 +410,6 @@ async function searchWiki(q) {
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "public, s-maxage=900, stale-while-revalidate=3600");
 
   const q = String(req.query?.q ?? "").trim().slice(0, 120);
   if (q.length < 2) {
@@ -418,20 +418,47 @@ export default async function handler(req, res) {
   }
 
   const quick = req.query?.quick === "1";
-  const mainVideos = searchYouTube(q, quick);
-  const [youtube, x, reddit, news, wiki, background, videos] = await Promise.all([
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), quick ? 5_500 : 9_000);
+  let partial = false;
+  async function upstream(url, options) {
+    try {
+      const signal = options?.signal
+        ? AbortSignal.any([options.signal, deadline.signal])
+        : deadline.signal;
+      const response = await fetch(url, { ...options, signal });
+      if (response.status === 429 || response.status >= 500) partial = true;
+      return response;
+    } catch (error) {
+      partial = true;
+      throw error;
+    }
+  }
+
+  const mainVideos = searchYouTube(upstream, q, quick);
+  const results = await Promise.allSettled([
     mainVideos,
-    searchX(q, quick),
-    searchReddit(q, quick),
-    searchNews(q),
-    searchWiki(q),
-    searchBackground(q),
-    quick ? [] : searchVideoBackground(q, mainVideos),
+    searchX(upstream, q, quick),
+    searchReddit(upstream, q, quick),
+    searchNews(upstream, q),
+    searchWiki(upstream, q),
+    searchBackground(upstream, q),
+    quick ? [] : searchVideoBackground(upstream, q, mainVideos),
   ]);
+  clearTimeout(timer);
+
+  const [youtube, x, reddit, news, wiki, background, videos] = results.map((result) => {
+    if (result.status === "fulfilled") return result.value;
+    partial = true;
+    return [];
+  });
+  partial ||= deadline.signal.aborted;
+  res.setHeader("Cache-Control", partial ? "no-store" : "public, s-maxage=900, stale-while-revalidate=3600");
 
   res.status(200).json({
     query: q,
     fetchedAt: new Date().toISOString(),
+    partial,
     youtube,
     x,
     reddit,

@@ -55,6 +55,7 @@ export type DossierEvidence = {
   query: string;
   fetchedAt: string;
   liveOk: boolean;
+  partial: boolean;
   wiki: WikiSnippet[];
   atlasHits: Hit[];
   youtube: LiveYouTube[];
@@ -83,10 +84,25 @@ type RecentSignal = {
 
 let recentCache: Promise<RecentSignal[]> | null = null;
 
+async function fetchResearchJson<T>(url: string, timeout: number, signal?: AbortSignal): Promise<T> {
+  const request = new AbortController();
+  const abort = () => request.abort();
+  if (signal?.aborted) abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(abort, timeout);
+  try {
+    const response = await fetch(url, { signal: request.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json() as T;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
 function loadRecentSignals(): Promise<RecentSignal[]> {
-  recentCache ??= fetch("/data/recent.json")
-    .then((r) => (r.ok ? r.json() : { rows: [] }))
-    .then((j: { rows?: RecentSignalRow[] }) =>
+  recentCache ??= fetchResearchJson<{ rows?: RecentSignalRow[] }>("/data/recent.json", 6000)
+    .then((j) =>
       (j.rows ?? []).map(([platform, countryCode, title, author, url, publishedAt, metric]) => ({
         platform,
         countryCode,
@@ -106,6 +122,7 @@ function loadRecentSignals(): Promise<RecentSignal[]> {
 
 type LiveApiResponse = {
   fetchedAt?: string;
+  partial?: boolean;
   youtube?: LiveYouTube[];
   x?: LiveXPost[];
   reddit?: LiveRedditPost[];
@@ -114,42 +131,13 @@ type LiveApiResponse = {
   wiki?: WikiSnippet[];
 };
 
-async function fetchLiveWeb(query: string, quick: boolean): Promise<LiveApiResponse | null> {
+async function fetchLiveWeb(query: string, quick: boolean, signal: AbortSignal): Promise<LiveApiResponse | null> {
   try {
-    const r = await fetch(`/api/research?q=${encodeURIComponent(query)}${quick ? "&quick=1" : ""}`, { signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) return null;
-    return (await r.json()) as LiveApiResponse;
+    const path = `/api/research?q=${encodeURIComponent(query)}${quick ? "&quick=1" : ""}`;
+    const result = await fetchResearchJson<LiveApiResponse>(path, 16_000, signal);
+    return Array.isArray(result?.news) && Array.isArray(result?.youtube) ? result : null;
   } catch {
     return null;
-  }
-}
-
-async function fetchWikiDirect(lang: "pt" | "en", query: string): Promise<WikiSnippet[]> {
-  try {
-    const sr = await fetch(
-      `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=2&format=json&origin=*`,
-      { signal: AbortSignal.timeout(6000) },
-    );
-    if (!sr.ok) return [];
-    const sj = (await sr.json()) as { query?: { search?: { title: string }[] } };
-    const titles = (sj.query?.search ?? []).map((x) => x.title);
-    if (!titles.length) return [];
-    const er = await fetch(
-      `https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts|info&exintro=1&explaintext=1&inprop=url&titles=${encodeURIComponent(titles.join("|"))}&format=json&origin=*`,
-      { signal: AbortSignal.timeout(6000) },
-    );
-    if (!er.ok) return [];
-    const ej = (await er.json()) as { query?: { pages?: Record<string, { title?: string; extract?: string; fullurl?: string }> } };
-    return Object.values(ej.query?.pages ?? {})
-      .filter((p) => p.title && p.extract && p.extract.trim().length > 40)
-      .map((p) => ({
-        lang,
-        title: p.title!,
-        extract: p.extract!.trim().slice(0, 1400),
-        url: p.fullurl ?? `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(p.title!)}`,
-      }));
-  } catch {
-    return [];
   }
 }
 
@@ -161,13 +149,16 @@ function ytId(url: string): string | null {
  * Gathers live evidence from the internet (/api/research scraping YouTube, X, Reddit, News, Wikipedia)
  * combined with ATLAS's own monitored signals (/data/recent.json) and database index.
  */
-export async function gatherDossierEvidence(query: string, atlasHits: Hit[], quick = false): Promise<DossierEvidence> {
+export async function gatherDossierEvidence(
+  query: string,
+  { quick, includeRecent, signal }: { quick: boolean; includeRecent: boolean; signal: AbortSignal },
+): Promise<DossierEvidence> {
   const words = fold(query)
     .split(" ")
     .filter((w) => w.length >= 2)
     .slice(0, 6);
 
-  const [live, allRecent] = await Promise.all([fetchLiveWeb(query, quick), quick ? Promise.resolve([]) : loadRecentSignals()]);
+  const [live, allRecent] = await Promise.all([fetchLiveWeb(query, quick, signal), includeRecent ? loadRecentSignals() : []]);
 
   const matchedRecent = words.length
     ? allRecent.filter((s) => {
@@ -213,23 +204,39 @@ export async function gatherDossierEvidence(query: string, atlasHits: Hit[], qui
     news.push({ title: s.title, source: s.author, url: s.url, publishedAt: s.publishedAt });
   }
 
-  let wiki = live?.wiki ?? [];
-  if (!wiki.length && !live && !quick) {
-    const [pt, en] = await Promise.all([fetchWikiDirect("pt", query), fetchWikiDirect("en", query)]);
-    wiki = [...pt, ...(pt.length < 2 ? en : en.slice(0, 1))].slice(0, 3);
-  }
-
   return {
     query,
     fetchedAt: live?.fetchedAt ?? new Date().toISOString(),
     liveOk: Boolean(live),
-    wiki,
-    atlasHits: atlasHits.slice(0, 16),
+    partial: live?.partial === true,
+    wiki: live?.wiki ?? [],
+    atlasHits: [],
     youtube: youtube.slice(0, 16),
     x: x.slice(0, 16),
     reddit: reddit.slice(0, 14),
     news: news.slice(0, 16),
     background: live?.background ?? [],
+  };
+}
+
+export function mergeDossierEvidence(previous: DossierEvidence | null, next: DossierEvidence): DossierEvidence {
+  if (!previous) return next;
+  if (!next.liveOk) return previous;
+  const merge = <T extends { url: string }>(current: T[], earlier: T[]) => {
+    const matches = new Map(current.map((item) => [item.url, item]));
+    for (const item of earlier) {
+      if (!matches.has(item.url)) matches.set(item.url, item);
+    }
+    return [...matches.values()].slice(0, 24);
+  };
+  return {
+    ...next,
+    wiki: merge(next.wiki, previous.wiki),
+    youtube: merge(next.youtube, previous.youtube),
+    x: merge(next.x, previous.x),
+    reddit: merge(next.reddit, previous.reddit),
+    news: merge(next.news, previous.news),
+    background: merge(next.background, previous.background),
   };
 }
 
