@@ -38,6 +38,28 @@ const readLayer = (): LayerId => {
 const DEFAULT_WIDTH = 520;
 const MIN_WIDTH = 380;
 const WIDTH_KEY = "atlas:dossier-width";
+const WIDTH_EVENT = "atlas:dossier-width";
+const subscribeWidth = (cb: () => void) => {
+  window.addEventListener("storage", cb);
+  window.addEventListener(WIDTH_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(WIDTH_EVENT, cb);
+  };
+};
+const readSavedWidth = (): number => {
+  try {
+    const saved = Number(localStorage.getItem(WIDTH_KEY));
+    if (Number.isFinite(saved) && saved >= MIN_WIDTH) return Math.min(saved, window.innerWidth - 80);
+  } catch {}
+  return DEFAULT_WIDTH;
+};
+const writeSavedWidth = (next: number) => {
+  try {
+    localStorage.setItem(WIDTH_KEY, String(next));
+    window.dispatchEvent(new Event(WIDTH_EVENT));
+  } catch {}
+};
 
 export function AtlasShell({ countries, stats, events, children }: Props) {
   const router = useRouter();
@@ -45,27 +67,24 @@ export function AtlasShell({ countries, stats, events, children }: Props) {
   const [pending, startTransition] = useTransition();
   const selected = pathname.match(/^\/pais\/([A-Z]{3})/)?.[1] ?? null;
   const layer = useSyncExternalStore(subscribeLayer, readLayer, () => "pulse" as LayerId);
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [dragging, setDragging] = useState(false);
+  const savedWidth = useSyncExternalStore(subscribeWidth, readSavedWidth, () => DEFAULT_WIDTH);
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const width = dragWidth ?? savedWidth;
+  const dragging = dragWidth !== null;
   const dragStart = useRef<{ x: number; w: number } | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = Number(localStorage.getItem(WIDTH_KEY));
-      if (Number.isFinite(saved) && saved >= MIN_WIDTH) setWidth(Math.min(saved, window.innerWidth - 80));
-    } catch {}
-  }, []);
-
-  useEffect(() => {
     if (!dragging) return;
+    let latest = dragStart.current?.w ?? DEFAULT_WIDTH;
     const onMove = (e: PointerEvent) => {
       if (!dragStart.current) return;
       const max = Math.max(MIN_WIDTH, Math.min(1100, window.innerWidth - 80));
-      const next = Math.round(Math.max(MIN_WIDTH, Math.min(max, dragStart.current.w + (dragStart.current.x - e.clientX))));
-      setWidth(next);
+      latest = Math.round(Math.max(MIN_WIDTH, Math.min(max, dragStart.current.w + (dragStart.current.x - e.clientX))));
+      setDragWidth(latest);
     };
     const onUp = () => {
-      setDragging(false);
+      writeSavedWidth(latest);
+      setDragWidth(null);
       dragStart.current = null;
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
@@ -82,23 +101,15 @@ export function AtlasShell({ countries, stats, events, children }: Props) {
     };
   }, [dragging]);
 
-  useEffect(() => {
-    if (!dragging) {
-      try {
-        localStorage.setItem(WIDTH_KEY, String(width));
-      } catch {}
-    }
-  }, [dragging, width]);
-
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     dragStart.current = { x: e.clientX, w: width };
-    setDragging(true);
+    setDragWidth(width);
   };
 
   const toggleWide = () => {
     const max = Math.min(920, window.innerWidth - 100);
-    setWidth((w) => (w >= max - 60 ? DEFAULT_WIDTH : max));
+    writeSavedWidth(width >= max - 60 ? DEFAULT_WIDTH : max);
   };
 
   const qs = (l: LayerId) => (l !== "pulse" ? `?camada=${l}` : "");
@@ -142,7 +153,7 @@ export function AtlasShell({ countries, stats, events, children }: Props) {
             {/* Left-edge drag handle to resize the dossier sidebar horizontally */}
             <div
               onPointerDown={startResize}
-              onDoubleClick={() => setWidth(DEFAULT_WIDTH)}
+              onDoubleClick={() => writeSavedWidth(DEFAULT_WIDTH)}
               title="Arraste para redimensionar o painel (duplo clique para restaurar)"
               role="separator"
               aria-orientation="vertical"
