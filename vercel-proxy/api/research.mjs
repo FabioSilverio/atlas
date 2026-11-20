@@ -320,9 +320,15 @@ async function searchVideoBackground(q, mainVideos) {
     searchYouTube(`${q} entrevista história`, true),
     mainVideos,
   ]);
+  const keywords = normalizeSearchText(q).match(/[a-z0-9]{3,}/g) ?? [];
+  const musicQuery = /\b(music[ao]?|videoclipe|cantor|banda|album)\b/.test(normalizeSearchText(q));
   const selected = new Map();
   for (const video of [documentary[0], interview[0], ...main, ...documentary, ...interview]) {
-    if (video && /^[\w-]{11}$/.test(video.id)) selected.set(video.id, video);
+    if (!video || !/^[\w-]{11}$/.test(video.id)) continue;
+    const title = normalizeSearchText(video.title);
+    if (!keywords.every((word) => title.includes(word))) continue;
+    if (!musicQuery && /\b(official.*music video|official audio|videoclipe oficial)\b/.test(title)) continue;
+    selected.set(video.id, video);
     if (selected.size >= 3) break;
   }
   const sources = await Promise.all([...selected.values()].map((video) => readVideoEvidence(video, q)));
@@ -336,7 +342,7 @@ async function searchBackground(q) {
     fetchGNewsRss(`"${subject}" ("igreja" OR "religião")`),
   ]);
   const editorial = /^felipe (?:campos )?sestaro$/i.test(subject) ? [{
-    title: "Quem ? Felipe Sestaro",
+    title: "Quem é Felipe Sestaro",
     source: "Gazeta do Povo",
     url: "https://www.gazetadopovo.com.br/vida-e-cidadania/apresentador-felipe-sestaro-ganha-projecao-com-embates-politicos-no-irontalks/",
     publishedAt: null,
