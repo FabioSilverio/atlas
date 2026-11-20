@@ -208,13 +208,21 @@ export const scoresJob: Job = {
     const surveyed = new Set(rows.filter((r) => r.method === "expert_survey" && r.partyId).map((r) => r.partyId));
     const unscored = parties.filter((p) => !surveyed.has(p.id) && p.wikidataQid);
     const alignment = new Map<string, string[]>();
-    for (const batch of chunks(unscored.map((p) => p.wikidataQid!), 200)) {
+    const partyWikidataIdeos = new Map<string, string[]>();
+    for (const batch of chunks(unscored.map((p) => p.wikidataQid!), 150)) {
       const res = await sparql(
-        `SELECT ?p ?alLabel WHERE { VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} } ?p wdt:P1387 ?al .
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". } }`,
+        `SELECT ?p (GROUP_CONCAT(DISTINCT ?alLabel; separator="|") AS ?als) (GROUP_CONCAT(DISTINCT ?idLabel; separator="|") AS ?ids) WHERE {
+          VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} }
+          OPTIONAL { ?p wdt:P1387 ?al . ?al rdfs:label ?alLabel FILTER(LANG(?alLabel) IN ("en", "mul")) }
+          OPTIONAL { ?p wdt:P1142 ?id . ?id rdfs:label ?idLabel FILTER(LANG(?idLabel) IN ("en", "mul")) }
+        } GROUP BY ?p`,
         { ttlHours: 24 * 7 },
       );
-      for (const r of res) alignment.set(qid(r.p)!, [...(alignment.get(qid(r.p)!) ?? []), r.alLabel]);
+      for (const r of res) {
+        const pq = qid(r.p)!;
+        if (r.als) alignment.set(pq, r.als.split("|").filter(Boolean));
+        if (r.ids) partyWikidataIdeos.set(pq, r.ids.split("|").filter(Boolean));
+      }
     }
     const ideologyLabels = new Map<number, string[]>();
     for (const r of (await db.execute(sql`select pi.party_id, coalesce(i.name_en, i.name) as label from party_ideologies pi join ideologies i on i.qid = pi.ideology_qid`)) as unknown as { party_id: number; label: string }[])
@@ -256,21 +264,62 @@ export const scoresJob: Job = {
             sourceUrl: `https://www.wikidata.org/wiki/${p.wikidataQid}#P1387`,
           },
         ]);
-      add("family-label", familyRow({ partyId: p.id }, ideologyLabels.get(p.id) ?? [], p.name));
+      const combinedIdeos = [...new Set([...(ideologyLabels.get(p.id) ?? []), ...(partyWikidataIdeos.get(p.wikidataQid!) ?? [])])];
+      add("family-label", familyRow({ partyId: p.id }, combinedIdeos, p.name));
     }
-    // Leaders without a party: their own ideology labels.
-    const leaders = (await db.execute(sql`
-      select gc.leader->>'qid' as qid, gc.leader->>'name' as name, gc.leader->'ideologies' as ideologies, pe.id as person_id
-      from government_context gc join people pe on pe.wikidata_qid = gc.leader->>'qid'
-      join governments g on g.country_code = gc.country_code and g.ended_on is null
-      where not exists (select 1 from government_parties x where x.government_id = g.id and x.role = 'leader')`)) as unknown as { qid: string; name: string; ideologies: { qid: string }[] | null; person_id: number }[];
-    const leaderIdeoQids = [...new Set(leaders.flatMap((l) => (l.ideologies ?? []).map((i) => i.qid)))];
-    const enLabel = new Map<string, string>();
-    for (const batch of chunks(leaderIdeoQids, 200)) {
-      const res = await sparql(`SELECT ?i ?l WHERE { VALUES ?i { ${batch.map((q) => `wd:${q}`).join(" ")} } ?i rdfs:label ?l FILTER(LANG(?l) IN ("en", "mul")) }`, { ttlHours: 24 * 30 });
-      for (const r of res) enLabel.set(qid(r.i)!, r.l);
+    // Current chief executives: own Wikidata P1387/P1142 and historical/suspended P102 party labels as confidence-D fallback.
+    const curChiefs = (await db.execute(sql`
+      select distinct pe.id as person_id, pe.wikidata_qid as qid, pe.name
+      from governments g
+      join people pe on pe.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
+      where g.ended_on is null and pe.wikidata_qid is not null`)) as unknown as { person_id: number; qid: string; name: string }[];
+    const chiefByQid = new Map(curChiefs.map((c) => [c.qid, c]));
+    for (const batch of chunks([...chiefByQid.keys()], 100)) {
+      const res = await sparql(
+        `SELECT ?p
+          (GROUP_CONCAT(DISTINCT ?al; separator="|") AS ?als)
+          (GROUP_CONCAT(DISTINCT ?il; separator="|") AS ?ils)
+          (GROUP_CONCAT(DISTINCT ?pal; separator="|") AS ?pals)
+          (GROUP_CONCAT(DISTINCT ?pil; separator="|") AS ?pils)
+        WHERE {
+          VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} }
+          OPTIONAL { ?p wdt:P1387 ?a . ?a rdfs:label ?al FILTER(LANG(?al) IN ("en", "mul")) }
+          OPTIONAL { ?p wdt:P1142 ?i . ?i rdfs:label ?il FILTER(LANG(?il) IN ("en", "mul")) }
+          OPTIONAL {
+            ?p wdt:P102 ?pt . FILTER(?pt NOT IN (wd:Q327591, wd:Q7049542))
+            OPTIONAL { ?pt wdt:P1387 ?pa . ?pa rdfs:label ?pal FILTER(LANG(?pal) IN ("en", "mul")) }
+            OPTIONAL { ?pt wdt:P1142 ?pi . ?pi rdfs:label ?pil FILTER(LANG(?pil) IN ("en", "mul")) }
+          }
+        } GROUP BY ?p`,
+        { ttlHours: 24 * 7 },
+      );
+      for (const r of res) {
+        const c = chiefByQid.get(qid(r.p)!);
+        if (!c) continue;
+        const ownAl = alignmentEstimate((r.als ?? "").split("|").filter(Boolean));
+        const partyAl = !ownAl ? alignmentEstimate((r.pals ?? "").split("|").filter(Boolean)) : null;
+        const al = ownAl ?? partyAl;
+        if (al) {
+          add("wikidata-alignment-leader", [
+            {
+              personId: c.person_id,
+              dimension: "econ_lr",
+              rawLabel: al.used.join(", "),
+              valueNorm: String(al.value),
+              method: "alignment_label",
+              subjectName: c.name,
+              notes: ownAl
+                ? `posição política declarada no Wikidata (P1387): ${al.used.join(", ")}.`
+                : `posição política de partido histórico/vinculado no Wikidata (P102/P1387): ${al.used.join(", ")}.`,
+              sourceId: "wikidata",
+              sourceUrl: `https://www.wikidata.org/wiki/${c.qid}`,
+            },
+          ]);
+        }
+        const ideos = [...(r.ils ?? "").split("|").filter(Boolean), ...(r.pils ?? "").split("|").filter(Boolean)];
+        if (ideos.length) add("family-label-leader", familyRow({ personId: c.person_id }, ideos, c.name));
+      }
     }
-    for (const l of leaders) add("family-label-leader", familyRow({ personId: l.person_id }, (l.ideologies ?? []).map((i) => enLabel.get(i.qid)).filter(Boolean) as string[], l.name));
 
     // Full refresh of these sources; editorial estimates (atlas-curation) are left alone.
     await db.transaction(async (tx) => {

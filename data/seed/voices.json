@@ -1,6 +1,1290 @@
 [
-  { "country": "BRA", "camp": "Liberalismo", "name": "Ivanildo Terceiro", "x": "ivanildoiii", "youtube": null, "note": "indicado pelo editor" },
-  { "country": "BRA", "camp": "Liberalismo", "name": "Pedro Doria", "x": "pedrodoria", "youtube": null, "note": "indicado pelo editor; perfil no X confirmado pelo Wikidata (P2002)" },
-  { "country": "BRA", "camp": "Bolsonarismo", "name": "Kim Paim", "x": "kimpaim", "youtube": null, "note": "indicado pelo editor" },
-  { "country": "BRA", "camp": "Bolsonarismo", "name": "Mafinha", "x": "MafinhaBarba", "youtube": null, "note": "indicado pelo editor" }
+  {
+    "country": "BRA",
+    "camp": "Liberalismo",
+    "name": "Ivanildo Terceiro",
+    "x": "ivanildoiii",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Liberalismo",
+    "name": "Pedro Doria",
+    "x": "pedrodoria",
+    "youtube": null,
+    "note": "indicado pelo editor; perfil no X confirmado pelo Wikidata (P2002)"
+  },
+  {
+    "country": "BRA",
+    "camp": "Bolsonarismo",
+    "name": "Kim Paim",
+    "x": "kimpaim",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Bolsonarismo",
+    "name": "Mafinha",
+    "x": "MafinhaBarba",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@AndrezaMatais",
+    "x": "AndrezaMatais",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@yzancap",
+    "x": "yzancap",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@cortesdochief",
+    "x": "cortesdochief",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ConservaBanido",
+    "x": "ConservaBanido",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@tiagocarvai",
+    "x": "tiagocarvai",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@DefesaSulGlobal",
+    "x": "DefesaSulGlobal",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@bralternativo_",
+    "x": "bralternativo_",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Pri_usabr1",
+    "x": "Pri_usabr1",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@investeemfoco",
+    "x": "investeemfoco",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@SafonovBR",
+    "x": "SafonovBR",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@pfigueiredo08",
+    "x": "pfigueiredo08",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@PortaldoDantas",
+    "x": "PortaldoDantas",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@caveira_360",
+    "x": "caveira_360",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Delateinews",
+    "x": "Delateinews",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@CentralDireitaB",
+    "x": "CentralDireitaB",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Zack_lope",
+    "x": "Zack_lope",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@george1BR2",
+    "x": "george1BR2",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Mister_Romanini",
+    "x": "Mister_Romanini",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@doutzp",
+    "x": "doutzp",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Haaaysb",
+    "x": "Haaaysb",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@NewsLiberdade",
+    "x": "NewsLiberdade",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@O_PontoX",
+    "x": "O_PontoX",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@GTNewsOFICIAL",
+    "x": "GTNewsOFICIAL",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Geopoliticabra2",
+    "x": "Geopoliticabra2",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@meioindep",
+    "x": "meioindep",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@catatauhorney",
+    "x": "catatauhorney",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@BlogMarinaDM",
+    "x": "BlogMarinaDM",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Unikron_",
+    "x": "Unikron_",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@bolsonarotv_",
+    "x": "bolsonarotv_",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ItaloMarsinho",
+    "x": "ItaloMarsinho",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@TheIncorrupt_",
+    "x": "TheIncorrupt_",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@PrimeiroFront",
+    "x": "PrimeiroFront",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@DIDIREDPILL",
+    "x": "DIDIREDPILL",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ArturoMcfields",
+    "x": "ArturoMcfields",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Tali_Mito22",
+    "x": "Tali_Mito22",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@GayerGus",
+    "x": "GayerGus",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@baixo_idh",
+    "x": "baixo_idh",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@fenixb22",
+    "x": "fenixb22",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@pamcosta21",
+    "x": "pamcosta21",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@caueconomy",
+    "x": "caueconomy",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ViLiMiGu_Tex",
+    "x": "ViLiMiGu_Tex",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@fatosdabolsa",
+    "x": "fatosdabolsa",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ocafelibertario",
+    "x": "ocafelibertario",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@bretas_erick",
+    "x": "bretas_erick",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@eixopolitico",
+    "x": "eixopolitico",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@RTdoBrasil",
+    "x": "RTdoBrasil",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@g_garc2",
+    "x": "g_garc2",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@TerraBrasilnot",
+    "x": "TerraBrasilnot",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Maxcardoso",
+    "x": "Maxcardoso",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@revistaoeste",
+    "x": "revistaoeste",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@direitasiqueira",
+    "x": "direitasiqueira",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@FelipeTadewald",
+    "x": "FelipeTadewald",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@CNNEconomia",
+    "x": "CNNEconomia",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@EleicaoBr2026",
+    "x": "EleicaoBr2026",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@FranzeNicolina",
+    "x": "FranzeNicolina",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@SensoCrtico1",
+    "x": "SensoCrtico1",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@0C0RV0",
+    "x": "0C0RV0",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@iane_menezes",
+    "x": "iane_menezes",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Fa1ryNight",
+    "x": "Fa1ryNight",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@elivieira",
+    "x": "elivieira",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ancapsu",
+    "x": "ancapsu",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@LogInfra",
+    "x": "LogInfra",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@medoedeliriobr",
+    "x": "medoedeliriobr",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ducavendish",
+    "x": "ducavendish",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@david_agape_",
+    "x": "david_agape_",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@allandospanos",
+    "x": "allandospanos",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@mspbra",
+    "x": "mspbra",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@DamaDeFerroTV",
+    "x": "DamaDeFerroTV",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@MetodoMoreira",
+    "x": "MetodoMoreira",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@FariaLimaElevat",
+    "x": "FariaLimaElevat",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@libertarianwolf",
+    "x": "libertarianwolf",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@pardodelph",
+    "x": "pardodelph",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@pharaujo",
+    "x": "pharaujo",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@olabocos",
+    "x": "olabocos",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@PATRlOTAS",
+    "x": "PATRlOTAS",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@choquei",
+    "x": "choquei",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@MeninRibeiro",
+    "x": "MeninRibeiro",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Economesteter",
+    "x": "Economesteter",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@chutandoaescada",
+    "x": "chutandoaescada",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@iiskenderian",
+    "x": "iiskenderian",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@CNNBrasil",
+    "x": "CNNBrasil",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@hoje_no",
+    "x": "hoje_no",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@realpfigueiredo",
+    "x": "realpfigueiredo",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@igorgadelham",
+    "x": "igorgadelham",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Chief117Br",
+    "x": "Chief117Br",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@alexandregarcia",
+    "x": "alexandregarcia",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Poder360",
+    "x": "Poder360",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Metropoles",
+    "x": "Metropoles",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@bernardopkuster",
+    "x": "bernardopkuster",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@claudio_dantas_",
+    "x": "claudio_dantas_",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@o_antagonista",
+    "x": "o_antagonista",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@josiasteofilo",
+    "x": "josiasteofilo",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@GFiuza_Oficial",
+    "x": "GFiuza_Oficial",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@carteiroreaca",
+    "x": "carteiroreaca",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@BrazilJournal",
+    "x": "BrazilJournal",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@andreshalders",
+    "x": "andreshalders",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@rafaelgloves",
+    "x": "rafaelgloves",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@XadrezVerbal",
+    "x": "XadrezVerbal",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@LEME12",
+    "x": "LEME12",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@taoquei1",
+    "x": "taoquei1",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@lordivan22",
+    "x": "lordivan22",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@edivaldocmachad",
+    "x": "edivaldocmachad",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Alexmorettibr",
+    "x": "Alexmorettibr",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@TonyVolpon",
+    "x": "TonyVolpon",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@nikolas_dm",
+    "x": "nikolas_dm",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@RankPolitico",
+    "x": "RankPolitico",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@DolarBipolar",
+    "x": "DolarBipolar",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@JHdaFonseca",
+    "x": "JHdaFonseca",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Biakicis",
+    "x": "Biakicis",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Kell_cristineR",
+    "x": "Kell_cristineR",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@jornaldarecord",
+    "x": "jornaldarecord",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@andrevbt",
+    "x": "andrevbt",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@goescarlos",
+    "x": "goescarlos",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@leandroruschel",
+    "x": "leandroruschel",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@GloboNews",
+    "x": "GloboNews",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@iaragb",
+    "x": "iaragb",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@EuSouLivres",
+    "x": "EuSouLivres",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@jairbolsonaro",
+    "x": "jairbolsonaro",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@JovemPanNews",
+    "x": "JovemPanNews",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@viniciuscfp82",
+    "x": "viniciuscfp82",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@LinaHQ",
+    "x": "LinaHQ",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@anapaulahenkel",
+    "x": "anapaulahenkel",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@BolsonaroSP",
+    "x": "BolsonaroSP",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@CarlosBolsonaro",
+    "x": "CarlosBolsonaro",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@correio",
+    "x": "correio",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@colunaesplanada",
+    "x": "colunaesplanada",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@infomoney",
+    "x": "infomoney",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@0xLibert",
+    "x": "0xLibert",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@SamPancher",
+    "x": "SamPancher",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@ayubio",
+    "x": "ayubio",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@JornalOGlobo",
+    "x": "JornalOGlobo",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@allanldsantos",
+    "x": "allanldsantos",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@mendlowicz",
+    "x": "mendlowicz",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@domlancellotti",
+    "x": "domlancellotti",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@FlavioBolsonaro",
+    "x": "FlavioBolsonaro",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@alvaroborba",
+    "x": "alvaroborba",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Rconstantino",
+    "x": "Rconstantino",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Ideiasradicais",
+    "x": "Ideiasradicais",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@valoreconomico",
+    "x": "valoreconomico",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@exame",
+    "x": "exame",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@raiam700",
+    "x": "raiam700",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@filipetrielli",
+    "x": "filipetrielli",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@bellanna",
+    "x": "bellanna",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@thimoteoolive",
+    "x": "thimoteoolive",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@roseannkennedy",
+    "x": "roseannkennedy",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@LaudelinoRJ",
+    "x": "LaudelinoRJ",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@RevistaEpoca",
+    "x": "RevistaEpoca",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@marcelvanhattem",
+    "x": "marcelvanhattem",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@yurivs",
+    "x": "yurivs",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@gazetadopovo",
+    "x": "gazetadopovo",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@folha",
+    "x": "folha",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@UOLNoticias",
+    "x": "UOLNoticias",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@radardamidia",
+    "x": "radardamidia",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@Estadao",
+    "x": "Estadao",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@RobertoReis",
+    "x": "RobertoReis",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@g1",
+    "x": "g1",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  },
+  {
+    "country": "BRA",
+    "camp": "Curadoria do editor",
+    "name": "@bbcbrasil",
+    "x": "bbcbrasil",
+    "youtube": null,
+    "note": "indicado pelo editor"
+  }
 ]

@@ -271,27 +271,38 @@ type FxStatus = { id: string; url: string; text: string; created_timestamp: numb
  * and what was collected stays for 30 days. Only the account's own posts count.
  */
 async function xVoices(out: Signal[], tag: (code: string, t: string) => { actorIds: number[]; econ: string | null; leanBasis: string | null }, bump: (k: string, n?: number) => void) {
-  for (const v of (voices as Voice[]).filter((v) => v.x)) {
+  const all = (voices as Voice[]).filter((v) => v.x);
+  if (!all.length) return;
+  const perRun = process.env.MONITOR_ALL_VOICES === "1" ? all.length : Number(process.env.MONITOR_VOICES_PER_RUN ?? 50);
+  const cursor = await getState<number>("monitor.xVoiceCursor", 0);
+  const start = cursor % all.length;
+  const batch: Voice[] = [];
+  for (let i = 0; i < Math.min(perRun, all.length); i++) batch.push(all[(start + i) % all.length]);
+  await pool(batch, 4, async (v) => {
     try {
-      const res = await fetch(`https://api.fxtwitter.com/2/profile/${v.x}/statuses`, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(30_000) });
+      const res = await fetch(`https://api.fxtwitter.com/2/profile/${v.x}/statuses`, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(20_000) });
       if (!res.ok) {
         bump("xVoicesUnavailable");
-        continue;
+        return;
       }
       const { results = [] } = (await res.json()) as { results?: FxStatus[] };
       for (const p of results.filter((p) => p.author?.screen_name?.toLowerCase() === v.x!.toLowerCase())) {
         const engagement = p.likes + 2 * p.reposts + p.replies + (p.quotes ?? 0);
+        const displayName = v.name.startsWith("@") ? v.name : `${v.name} (@${v.x})`;
+        const author = v.camp && v.camp !== "Curadoria do editor" ? `${displayName} · ${v.camp}` : displayName;
         out.push({
           countryCode: v.country, platform: "x-voice", title: p.text.replace(/\s+/g, " ").slice(0, 400), url: `https://x.com/${v.x}/status/${p.id}`,
-          author: `${v.name} (@${v.x}) · ${v.camp}`, publishedAt: new Date(p.created_timestamp * 1000), metric: String(engagement), metricKind: "engajamento",
+          author, publishedAt: new Date(p.created_timestamp * 1000), metric: String(engagement), metricKind: "engajamento",
           terms: keyphrases(p.text), sourceId: "fxtwitter", ...tag(v.country, p.text),
         });
         bump("xVoices");
       }
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 250));
     } catch (err) {
       bump("xVoicesFailed");
       log.warn(`X @${v.x}: ${(err as Error).message}`);
     }
-  }
+  });
+  await setState("monitor.xVoiceCursor", (start + batch.length) % all.length);
+  log.info(`monitor: vozes X ${batch.length}/${all.length} contas`);
 }

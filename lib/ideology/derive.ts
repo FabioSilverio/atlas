@@ -164,6 +164,7 @@ export function deriveGovernmentPosition(i: DeriveInput): DeriveResult {
   const labelled = [
     ...ofDim.filter((s) => s.partyId != null && partyOrder.has(s.partyId) && s.method === "alignment_label").sort((a, b) => partyOrder.get(a.partyId!)! - partyOrder.get(b.partyId!)!),
     ...ofDim.filter((s) => s.partyId != null && partyOrder.has(s.partyId) && s.method === "family_label").sort((a, b) => partyOrder.get(a.partyId!)! - partyOrder.get(b.partyId!)!),
+    ...ofDim.filter((s) => s.personId != null && s.personId === i.chiefPersonId && s.method === "alignment_label"),
     ...ofDim.filter((s) => s.personId != null && s.personId === i.chiefPersonId && s.method === "family_label"),
   ];
   if (labelled.length) {

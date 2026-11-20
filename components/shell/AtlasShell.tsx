@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import type { FeedEvent, MapCountry, Stats } from "@/lib/queries";
 import { LAYER_IDS, type LayerId } from "@/lib/ui/labels";
 import { CountryList } from "./CountryList";
@@ -35,12 +35,71 @@ const readLayer = (): LayerId => {
   return l && LAYER_IDS.includes(l) ? l : "pulse";
 };
 
+const DEFAULT_WIDTH = 520;
+const MIN_WIDTH = 380;
+const WIDTH_KEY = "atlas:dossier-width";
+
 export function AtlasShell({ countries, stats, events, children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
   const selected = pathname.match(/^\/pais\/([A-Z]{3})/)?.[1] ?? null;
   const layer = useSyncExternalStore(subscribeLayer, readLayer, () => "pulse" as LayerId);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef<{ x: number; w: number } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(WIDTH_KEY));
+      if (Number.isFinite(saved) && saved >= MIN_WIDTH) setWidth(Math.min(saved, window.innerWidth - 80));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => {
+      if (!dragStart.current) return;
+      const max = Math.max(MIN_WIDTH, Math.min(1100, window.innerWidth - 80));
+      const next = Math.round(Math.max(MIN_WIDTH, Math.min(max, dragStart.current.w + (dragStart.current.x - e.clientX))));
+      setWidth(next);
+    };
+    const onUp = () => {
+      setDragging(false);
+      dragStart.current = null;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [dragging]);
+
+  useEffect(() => {
+    if (!dragging) {
+      try {
+        localStorage.setItem(WIDTH_KEY, String(width));
+      } catch {}
+    }
+  }, [dragging, width]);
+
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    dragStart.current = { x: e.clientX, w: width };
+    setDragging(true);
+  };
+
+  const toggleWide = () => {
+    const max = Math.min(920, window.innerWidth - 100);
+    setWidth((w) => (w >= max - 60 ? DEFAULT_WIDTH : max));
+  };
 
   const qs = (l: LayerId) => (l !== "pulse" ? `?camada=${l}` : "");
   const go = useCallback(
@@ -76,16 +135,38 @@ export function AtlasShell({ countries, stats, events, children }: Props) {
 
         {selected && (
           <aside
-            className="scroll-thin dossier-in absolute inset-0 z-10 overflow-y-auto bg-panel md:inset-auto md:bottom-3 md:right-3 md:top-3 md:w-[460px] md:max-w-[calc(100%-1.5rem)] md:border md:border-line-strong md:bg-panel/[0.97] md:shadow-2xl md:backdrop-blur-sm"
+            style={{ "--dossier-w": `${width}px` } as React.CSSProperties}
+            className="dossier-panel scroll-thin dossier-in absolute inset-0 z-10 overflow-y-auto bg-panel md:inset-auto md:bottom-3 md:right-3 md:top-3 md:w-[var(--dossier-w)] md:max-w-[calc(100%-1.5rem)] md:border md:border-line-strong md:bg-panel/[0.97] md:shadow-2xl md:backdrop-blur-sm"
             aria-label="Dossiê do país"
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-panel px-4 py-2">
+            {/* Left-edge drag handle to resize the dossier sidebar horizontally */}
+            <div
+              onPointerDown={startResize}
+              onDoubleClick={() => setWidth(DEFAULT_WIDTH)}
+              title="Arraste para redimensionar o painel (duplo clique para restaurar)"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Redimensionar painel do dossiê"
+              className={`group fixed z-20 hidden w-3 cursor-col-resize items-center justify-center md:flex ${dragging ? "bg-cyan/20" : "hover:bg-cyan/10"}`}
+              style={{ top: 56, bottom: 40, right: `calc(min(${width}px, 100vw - 1.5rem) + 6px)` }}
+            >
+              <span className={`h-14 w-1 rounded-full transition-colors ${dragging ? "bg-cyan" : "bg-line-strong group-hover:bg-cyan"}`} />
+            </div>
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-panel px-5 py-2.5">
               <span className="label">Dossiê · {selected}</span>
               <div className="flex items-center gap-3">
-                <Link href="/" className="font-mono text-[11px] text-ink-2 hover:text-cyan md:hidden">
+                <button
+                  onClick={toggleWide}
+                  className="hidden font-mono text-[12px] text-ink-2 hover:text-cyan md:inline"
+                  title={width > 680 ? "Voltar ao tamanho padrão" : "Ampliar painel"}
+                  aria-label="Alternar largura do painel"
+                >
+                  {width > 680 ? "⇥" : "⇤"}
+                </button>
+                <Link href="/" className="font-mono text-[12px] text-ink-2 hover:text-cyan md:hidden">
                   ← países
                 </Link>
-                <button onClick={() => go({ country: null })} className="hidden font-mono text-[13px] text-ink-2 hover:text-cyan md:inline" aria-label="Fechar dossiê">
+                <button onClick={() => go({ country: null })} className="hidden font-mono text-[14px] text-ink-2 hover:text-cyan md:inline" aria-label="Fechar dossiê">
                   ✕
                 </button>
               </div>

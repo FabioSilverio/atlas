@@ -13,8 +13,8 @@
   --line: #1c232b;
   --line-strong: #2a333d;
   --text: #e4eaf0;
-  --text-2: #a3aeb9;
-  --muted: #6a7682;
+  --text-2: #b0bbc7;
+  --muted: #7c8996;
   --cyan: #3fd8e6;
   --cyan-dim: #1c5f68;
   --amber: #ffc247;
@@ -74,10 +74,19 @@ body {
 /* Section label: monospace, tracked, small caps feel. */
 .label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* Comfortable reading scale inside the resizable dossier sidebar. */
+.dossier-panel {
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.dossier-panel .label {
+  font-size: 11.5px;
 }
 
 .tabular {

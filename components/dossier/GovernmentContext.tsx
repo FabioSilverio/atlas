@@ -16,26 +16,26 @@ export async function GovernmentContext({ code }: { code: string }) {
   if (!c || (!c.party && !c.leader)) return null;
   const { party, leader, rise, latest, strength } = c;
   return (
-    <section className="px-4 py-4">
+    <section className="px-5 py-5">
       <h3 className="label mb-3">Governo em contexto</h3>
 
       {leader && (leader.summary || leader.description) && (
-        <div className="mb-4 flex gap-3">
+        <div className="mb-4 flex gap-3.5">
           {leader.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={leader.imageUrl} alt={`Retrato de ${leader.name}`} className="h-20 w-16 shrink-0 border border-line-strong object-cover grayscale" loading="lazy" />
+            <img src={leader.imageUrl} alt={`Retrato de ${leader.name}`} className="h-24 w-20 shrink-0 border border-line-strong object-cover grayscale" loading="lazy" />
           )}
           <div className="min-w-0">
             <div className="label">Quem é o líder</div>
-            <div className="text-[14px] text-ink">
+            <div className="text-[16px] font-medium text-ink">
               {leader.name}
-              {leader.birthYear && <span className="ml-1.5 font-mono text-[11px] text-muted">n. {leader.birthYear}</span>}
+              {leader.birthYear && <span className="ml-1.5 font-mono text-[12px] text-muted">n. {leader.birthYear}</span>}
             </div>
-            {leader.description && <div className="text-[12px] text-muted">{leader.description}</div>}
+            {leader.description && <div className="text-[13px] text-muted">{leader.description}</div>}
             {leader.summary && (
-              <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">
+              <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">
                 {leader.summary}{" "}
-                <a href={leader.summaryUrl ?? "#"} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-muted underline">
+                <a href={leader.summaryUrl ?? "#"} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-muted underline">
                   Wikipédia
                 </a>
               </p>
@@ -47,34 +47,34 @@ export async function GovernmentContext({ code }: { code: string }) {
       {party && (
         <div>
           <div className="flex items-baseline justify-between gap-2">
-            <a href={`https://www.wikidata.org/wiki/${party.qid}`} target="_blank" rel="noreferrer" className="text-[14px] text-ink hover:text-cyan">
+            <a href={`https://www.wikidata.org/wiki/${party.qid}`} target="_blank" rel="noreferrer" className="text-[16px] font-medium text-ink hover:text-cyan">
               {party.name}
             </a>
-            {party.founded && <span className="shrink-0 font-mono text-[11px] text-muted">fundado em {party.founded.slice(0, 4)}</span>}
+            {party.founded && <span className="shrink-0 font-mono text-[12px] text-muted">fundado em {party.founded.slice(0, 4)}</span>}
           </div>
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {party.alignment.map((a) => (
-              <span key={a} className="border border-line-strong px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2" title="Posição política declarada (Wikidata P1387)">
+              <span key={a} className="border border-line-strong px-2 py-0.5 font-mono text-[11.5px] text-ink-2" title="Posição política declarada (Wikidata P1387)">
                 {a}
               </span>
             ))}
             {party.ideologies.slice(0, 10).map((i) => (
-              <Link key={i.qid} href={`/ideologia/${i.qid}`} className="border border-cyan-dim/60 px-1.5 py-0.5 text-[11px] text-ink-2 hover:text-cyan" title="Ideologia declarada (Wikidata P1142)">
+              <Link key={i.qid} href={`/ideologia/${i.qid}`} className="border border-cyan-dim/60 px-2 py-0.5 text-[12px] text-ink-2 hover:text-cyan" title="Ideologia declarada (Wikidata P1142)">
                 {i.label}
               </Link>
             ))}
           </div>
-          {party.ideologies.length > 10 && <span className="font-mono text-[10px] text-muted">+{party.ideologies.length - 10} rótulos</span>}
+          {party.ideologies.length > 10 && <span className="font-mono text-[11px] text-muted">+{party.ideologies.length - 10} rótulos</span>}
           {party.summary && (
-            <p className="mt-2 text-[12.5px] leading-relaxed text-ink-2">
+            <p className="mt-2.5 text-[14px] leading-relaxed text-ink-2">
               {party.summary}{" "}
-              <a href={party.summaryUrl ?? "#"} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-muted underline">
+              <a href={party.summaryUrl ?? "#"} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-muted underline">
                 Wikipédia
               </a>
             </p>
           )}
           {(party.founders.length > 0 || party.chair) && (
-            <p className="mt-1.5 font-mono text-[10.5px] text-muted">
+            <p className="mt-2 font-mono text-[11.5px] text-muted">
               {party.founders.length > 0 && `fundadores: ${party.founders.join(", ")}`}
               {party.founders.length > 0 && party.chair && " · "}
               {party.chair && `presidente do partido: ${party.chair}`}

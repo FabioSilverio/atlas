@@ -17,11 +17,16 @@ const GENERIC = new Set(
   ("governo government gobierno gouvernement regierung presidente president ministro minister brasil brazil hoje today ontem semana week anos years novo nova new contra against pode should diz says afirma said sobre about pais country nacional national " +
     "politica politico politicos politics political politique politik polityka politika siyaset " +
     "ao vivo live en vivo en direct direkt video videos noticias noticia news breaking update updates watch full episode podcast entrevista interview commentary opinion analysis analise analisis editorial " +
-    "relatorio report reporte rapport bericht").split(" "),
+    "relatorio report reporte rapport bericht programa programas hombre mujer gente partido partidos copa mundial liga futbol futebol capitulo temporada show canal vivo directo hoy ayer").split(" "),
 );
 
 // Phrases made only of generic words ("ao vivo", "breaking news").
 const GENERIC_RE = /^(ao vivo|en vivo|en direct|live|breaking news|ultimas noticias|ultima hora|direto|aovivo)$/;
+
+// Exclude full TV shows, sports matches, soap operas and entertainment from "political videos".
+const NON_POLITICAL_VIDEO_RE =
+  /\b(masterchef|programa\s*\d+|programa completo|emisi[oó]n completa|edici[oó]n completa|jornal nacional|fant[aá]stico|doming[aã]o|caldeir[aã]o|en vivo\s*24|cap[ií]tulo\s*\d+|epis[oó]dio\s*\d+|temporada\s*\d+|novela|telenovela|resumo da novela|big brother|bbb\s*\d*|gran hermano|f[uú]tbol|futebol|copa mundial|sub-?\d+|champions league|libertadores|brasileir[aã]o|premier league|la liga|scaloneta|gp de |f[oó]rmula 1|formula 1|\bf1\b|\bnba\b|\bnfl\b|\bufc\b|melhores momentos|resumen del partido|goles|full match|highlights|cocina|cozinha|receita|hor[oó]scopo|fofoca|clipe oficial|official music video|official trailer|noche cocina|otro d[ií]a perdido)\b/i;
+const SPORTS_CHANNEL_RE = /\b(fox sports|tyc sports|espn|tnt sports|sportv|caz[eé]tv|sky sports|bein sports|eurosport|gol tv|dazn)\b/i;
 
 /**
  * The pulse of each country, from the monitor's signals:
@@ -36,14 +41,17 @@ export const pulseJob: Job = {
   name: "pulse",
   description: "pulso por país: termômetro de atenção por lado, termos em alta, vídeos, X e Reddit",
   async run() {
-    const countries = (await db.execute(sql`select distinct country_code as code from signals`)) as unknown as { code: string }[];
+    const countries = (await db.execute(sql`
+      select distinct s.country_code as code, c.name_en, c.name_pt
+      from signals s left join countries c on c.code = s.country_code`)) as unknown as { code: string; name_en: string | null; name_pt: string | null }[];
     const now = Date.now();
     const rowsOut: { countryCode: string; data: Pulse; computedAt: Date }[] = [];
     const history: (typeof schema.pulseHistory.$inferInsert)[] = [];
     const today = new Date().toISOString().slice(0, 10);
 
-    for (const { code: raw } of countries) {
+    for (const { code: raw, name_en, name_pt } of countries) {
       const code = raw.trim();
+      const selfNames = new Set([name_en, name_pt].filter(Boolean).map((n) => fold(n!)));
       const rows = (await db.execute(sql`
         select s.platform, s.title, s.url, s.author, s.channel_id, s.published_at, s.seen_at, s.metric, s.metric_kind, s.terms, s.actor_ids, s.econ, c.owner_kind
         from signals s left join channels c on c.channel_id = s.channel_id
@@ -72,11 +80,14 @@ export const pulseJob: Job = {
         const n = list.filter((r) => r.econ != null).length;
         return w ? { left: round(acc.left / w), center: round(acc.center / w), right: round(acc.right / w), n, mean: round(m / w) } : { left: 0, center: 0, right: 0, n: 0, mean: null };
       };
-      const combine = (parts: PulseSide[]): PulseSide => {
-        const ok = parts.filter((p) => p.n >= 5);
-        if (!ok.length) return { left: 0, center: 0, right: 0, n: 0, mean: null };
-        const avg = (k: "left" | "center" | "right") => round(ok.reduce((s, p) => s + p[k], 0) / ok.length);
-        return { left: avg("left"), center: avg("center"), right: avg("right"), n: ok.reduce((s, p) => s + p.n, 0), mean: round(ok.reduce((s, p) => s + p.mean!, 0) / ok.length) };
+      const combine = (parts: PulseSide[], allRows: Row[]): PulseSide => {
+        const ok = parts.filter((p) => p.n >= 3);
+        if (ok.length) {
+          const avg = (k: "left" | "center" | "right") => round(ok.reduce((s, p) => s + p[k], 0) / ok.length);
+          return { left: avg("left"), center: avg("center"), right: avg("right"), n: ok.reduce((s, p) => s + p.n, 0), mean: round(ok.reduce((s, p) => s + p.mean!, 0) / ok.length) };
+        }
+        const pooled = side(allRows);
+        return pooled.n >= 2 ? pooled : { left: 0, center: 0, right: 0, n: 0, mean: null };
       };
       const recent = rows.filter((r) => age(r) <= 72);
       const before = rows.filter((r) => age(r) > 72 && age(r) <= 240);
@@ -85,9 +96,9 @@ export const pulseJob: Job = {
         const s = side(recent.filter((r) => r.platform === p));
         if (s.n) byPlatform[p] = s;
       }
-      const overall = combine(Object.values(byPlatform));
+      const overall = combine(Object.values(byPlatform), recent);
       const prevParts = PLATFORMS.map((p) => side(before.filter((r) => r.platform === p)));
-      const previous = combine(prevParts);
+      const previous = combine(prevParts, before);
       const ytParty = recent.filter((r) => r.platform === "youtube" && (r.owner_kind === "party" || r.owner_kind === "politician") && pubAge(r) <= 168);
       const youtubeChannels = ytParty.length >= 5 ? sideByMetric(ytParty) : null;
 
@@ -101,7 +112,7 @@ export const pulseJob: Job = {
         for (const t of new Set(r.terms)) {
           const k = fold(t.replace(/^#/, ""));
           if (GENERIC_RE.test(k)) continue;
-          if (k.length < 3 || GENERIC.has(k)) continue;
+          if (k.length < 3 || GENERIC.has(k) || selfNames.has(k)) continue;
           const e = termItems.get(k) ?? { label: t.replace(/^#/, ""), now: [], before: 0 };
           if (isNow) e.now.push(r);
           else e.before++;
@@ -126,26 +137,33 @@ export const pulseJob: Job = {
           ];
           return { term: t.label, count: t.now.length, previous: t.before, platforms, econ: lean.mean, items: top.map(item) };
         });
-      const topTermKeys = new Set(terms.map((t) => fold(t.term)));
+      const politicalTermKeys = new Set(terms.filter((t) => t.econ != null).map((t) => fold(t.term)));
 
       // ── Highlights ──
-      const videos = rows
-        .filter((r) => r.platform === "youtube" && pubAge(r) <= 72 && (r.owner_kind === "party" || r.owner_kind === "politician" || r.owner_kind === "voice" || r.actor_ids.length > 0 || r.terms.some((t) => topTermKeys.has(fold(t)))))
+      const isPoliticalVideo = (r: Row) => {
+        if (r.platform !== "youtube") return false;
+        if (r.author && SPORTS_CHANNEL_RE.test(r.author)) return false;
+        if (NON_POLITICAL_VIDEO_RE.test(r.title)) return false;
+        return r.owner_kind === "party" || r.owner_kind === "politician" || r.owner_kind === "voice" || r.actor_ids.length > 0 || r.terms.some((t) => politicalTermKeys.has(fold(t)));
+      };
+      const yt72 = rows.filter((r) => pubAge(r) <= 72 && isPoliticalVideo(r));
+      const ytPool = yt72.length >= 12 ? yt72 : rows.filter((r) => pubAge(r) <= 168 && isPoliticalVideo(r));
+      const videos = ytPool
         .sort((a, b) => (metric(b) ?? 0) - (metric(a) ?? 0))
-        .slice(0, 12)
+        .slice(0, 24)
         .map(item);
       const xNow = rows.filter((r) => r.platform === "x" && age(r) <= 3);
       const xTrends = xNow
         .sort((a, b) => (metric(b) ?? 0) - (metric(a) ?? 0))
         .slice(0, 20)
-        .map((r) => ({ term: r.title, volume: r.metric_kind === "posts" ? metric(r) : null, url: r.url.replace(/#.*$/, ""), political: r.actor_ids.length > 0 || topTermKeys.has(fold(r.title.replace(/^#/, ""))) }));
-      const reddit = rows.filter((r) => r.platform === "reddit" && pubAge(r) <= 36).sort((a, b) => (metric(b) ?? 0) - (metric(a) ?? 0)).slice(0, 8).map(item);
+        .map((r) => ({ term: r.title, volume: r.metric_kind === "posts" ? metric(r) : null, url: r.url.replace(/#.*$/, ""), political: r.actor_ids.length > 0 || politicalTermKeys.has(fold(r.title.replace(/^#/, ""))) }));
+      const reddit = rows.filter((r) => r.platform === "reddit" && pubAge(r) <= 36).sort((a, b) => (metric(b) ?? 0) - (metric(a) ?? 0)).slice(0, 12).map(item);
       const headlines = rows
         .filter((r) => r.platform === "news" && pubAge(r) <= 24)
         .sort((a, b) => Number(b.actor_ids.length > 0) - Number(a.actor_ids.length > 0) || +new Date(b.published_at) - +new Date(a.published_at))
-        .slice(0, 10)
+        .slice(0, 12)
         .map(item);
-      const voices = rows.filter((r) => r.platform === "x-voice" && pubAge(r) <= 168).sort((a, b) => (metric(b) ?? 0) - (metric(a) ?? 0)).slice(0, 12).map(item);
+      const voices = rows.filter((r) => r.platform === "x-voice" && pubAge(r) <= 168).sort((a, b) => (metric(b) ?? 0) - (metric(a) ?? 0)).slice(0, 24).map(item);
       const counts: Record<string, number> = {};
       for (const r of recent) counts[r.platform] = (counts[r.platform] ?? 0) + 1;
 

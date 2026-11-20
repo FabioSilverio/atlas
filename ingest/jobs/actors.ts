@@ -1,10 +1,13 @@
 import { sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db/client";
-import { alignmentEstimate } from "@/lib/ideology/labels";
+import { FAMILY_NAME, alignmentEstimate, familyOf } from "@/lib/ideology/labels";
+import { normalize } from "@/lib/ideology/normalize";
+import { loadParlgov } from "../lib/datasets";
 import { touchSource, type Job } from "../lib/job";
 import { log } from "../lib/log";
 import { countryLangs, fold } from "../lib/monitor";
 import { qid, sparql } from "../lib/sparql";
+import { num as parseNum } from "../lib/text";
 import { chunks, wikiQids } from "../lib/wiki";
 
 type PartyRow = { code: string; iso2: string | null; label: string; wiki: string | null; econ: string | null; galtan: string | null; src: string | null; weight: number; candidate: string | null };
@@ -47,7 +50,7 @@ export const actorsJob: Job = {
 
     // One actor per party (keyed by Wikipedia title), keeping the best-scored row.
     const parties = new Map<string, PartyActor>();
-    const people: Actor[] = [];
+    const people: (Actor & { partyKey?: string })[] = [];
     for (const r of rows) {
       const code = r.code.trim();
       const key = `${code}|${r.wiki ?? r.label}`;
@@ -58,11 +61,24 @@ export const actorsJob: Job = {
           countryCode: code, kind: "party", qid: null, name: r.label.replace(/\s*\([^)]*\)$/, ""), aliases: new Set(), partyLabel: null,
           econ, galtan: num(r.galtan), scoreSource: r.src, sitelinks: null, wiki: r.wiki, iso2: r.iso2, weight: Number(r.weight) + (prev?.weight ?? 0),
         });
-      if (r.candidate) people.push({ countryCode: code, kind: "person", qid: null, name: r.candidate, aliases: new Set(), partyLabel: r.label.replace(/\s*\([^)]*\)$/, ""), econ, galtan: num(r.galtan), scoreSource: r.src, sitelinks: null });
+      if (r.candidate) people.push({ countryCode: code, kind: "person", qid: null, name: r.candidate, aliases: new Set(), partyLabel: r.label.replace(/\s*\([^)]*\)$/, ""), econ, galtan: num(r.galtan), scoreSource: r.src, sitelinks: null, partyKey: key });
+    }
+
+    // ParlGov family means for P1142 ideology fallback when a party has no survey or P1387 alignment.
+    const familyMeans = new Map<string, number>();
+    {
+      const acc = new Map<string, { e: number; n: number }>();
+      for (const r of await loadParlgov()) {
+        const e = parseNum(r.state_market);
+        if (e == null) continue;
+        const a = acc.get(r.family_name_short) ?? { e: 0, n: 0 };
+        acc.set(r.family_name_short, { e: a.e + e, n: a.n + 1 });
+      }
+      for (const [f, a] of acc) familyMeans.set(f, normalize(a.e / a.n, 0, 10));
     }
 
     // Wikidata: the party items behind the Wikipedia titles (following redirects), their
-    // short names, names in the country's languages and political alignment.
+    // short names, names in the country's languages, political alignment (P1387) and ideology (P1142).
     let failed = 0;
     const titleQid = await wikiQids([...parties.values()].map((p) => p.wiki).filter(Boolean) as string[]);
     for (const p of parties.values()) p.qid = p.wiki ? (titleQid.get(p.wiki) ?? null) : null;
@@ -71,10 +87,11 @@ export const actorsJob: Job = {
     for (const batch of chunks([...partyByQid.keys()], 60)) {
       try {
         const res = await sparql(
-          `SELECT ?p ?sl (GROUP_CONCAT(DISTINCT ?nm; separator="|") AS ?names) (GROUP_CONCAT(DISTINCT ?alignLabel; separator="|") AS ?align) WHERE {
+          `SELECT ?p ?sl (GROUP_CONCAT(DISTINCT ?nm; separator="|") AS ?names) (GROUP_CONCAT(DISTINCT ?alignLabel; separator="|") AS ?align) (GROUP_CONCAT(DISTINCT ?ideoLabel; separator="|") AS ?ideos) WHERE {
             VALUES ?p { ${batch.map((q) => `wd:${q}`).join(" ")} } ?p wikibase:sitelinks ?sl .
             OPTIONAL { { ?p wdt:P1813 ?n } UNION { ?p wdt:P1705 ?n } UNION { ?p rdfs:label ?n } UNION { ?p skos:altLabel ?n } BIND(CONCAT(LANG(?n), ":", STR(?n)) AS ?nm) }
             OPTIONAL { ?p wdt:P1387 ?al . ?al rdfs:label ?alignLabel FILTER(LANG(?alignLabel) = "en") }
+            OPTIONAL { ?p wdt:P1142 ?id . ?id rdfs:label ?ideoLabel FILTER(LANG(?ideoLabel) = "en") }
           } GROUP BY ?p ?sl`,
           { ttlHours: 24 * 7 },
         );
@@ -93,6 +110,12 @@ export const actorsJob: Job = {
               if (est) {
                 p.econ = est.value;
                 p.scoreSource = `estimativa: alinhamento político no Wikidata (${est.used.join(", ")})`;
+              } else {
+                const fam = familyOf((r.ideos ?? "").split("|").filter(Boolean));
+                if (fam && familyMeans.has(fam.family)) {
+                  p.econ = familyMeans.get(fam.family)!;
+                  p.scoreSource = `estimativa: família ${FAMILY_NAME[fam.family]} (Wikidata P1142 / ParlGov)`;
+                }
               }
             }
           }
@@ -102,6 +125,39 @@ export const actorsJob: Job = {
       }
     }
     for (const p of parties.values()) addAlias(p, p.name, "party");
+    // Propagate enriched party positions back to election candidates (and add their surname alias).
+    for (const a of people) {
+      const p = a.partyKey ? parties.get(a.partyKey) : undefined;
+      if (p && a.econ == null && p.econ != null) {
+        a.econ = p.econ;
+        a.galtan = p.galtan;
+        a.scoreSource = p.scoreSource;
+      }
+      const last = a.name.split(" ").at(-1) ?? "";
+      if (a.name.includes(" ") && last.length >= 5 && !COMMON_SURNAMES.has(fold(last))) addAlias(a, last, "person");
+    }
+
+    // Current chief executives (from governments + government_positions): always citeable with their government's position.
+    const curLeaders = (await db.execute(sql`
+      select g.country_code as code, pe.wikidata_qid as qid, pe.name, gp.value_norm as econ,
+             (select pa.name from government_parties gpar join parties pa on pa.id = gpar.party_id
+              where gpar.government_id = g.id and gpar.role = 'leader' order by gpar.position limit 1) as party_label
+      from governments g
+      join people pe on pe.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
+      join government_positions gp on gp.government_id = g.id and gp.dimension = 'econ_lr'
+      where g.ended_on is null and gp.value_norm is not null`)) as unknown as {
+      code: string; qid: string | null; name: string; econ: string; party_label: string | null;
+    }[];
+    for (const l of curLeaders) {
+      const a: Actor = {
+        countryCode: l.code.trim(), kind: "person", qid: l.qid, name: l.name, aliases: new Set(),
+        partyLabel: l.party_label, econ: Number(l.econ), galtan: null, scoreSource: "posição do governo atual", sitelinks: 100,
+      };
+      addAlias(a, l.name, "person");
+      const last = l.name.split(" ").at(-1) ?? "";
+      if (l.name.includes(" ") && last.length >= 5 && !COMMON_SURNAMES.has(fold(last))) addAlias(a, last, "person");
+      people.push(a);
+    }
 
     // Notable living members (current P102 membership only), with the names headlines use.
     for (const batch of chunks([...partyByQid.keys()], 25)) {
@@ -140,15 +196,31 @@ export const actorsJob: Job = {
     }
     for (const a of people) addAlias(a, a.name, "person");
 
-    // An alias shared by actors on different sides would mislead: drop it (except an actor's own full name).
-    const all = [...parties.values(), ...people];
+    // Merge duplicate actors (same country, kind, folded name): keep non-null econ, qid and union of aliases.
+    const merged = new Map<string, Actor>();
+    for (const a of [...parties.values(), ...people]) {
+      const k = `${a.countryCode}|${a.kind}|${fold(a.name)}`;
+      const prev = merged.get(k);
+      if (!prev) {
+        merged.set(k, { ...a, aliases: new Set(a.aliases) });
+      } else {
+        for (const al of a.aliases) prev.aliases.add(al);
+        if (prev.econ == null && a.econ != null) {
+          prev.econ = a.econ;
+          prev.galtan = a.galtan;
+          prev.scoreSource = a.scoreSource;
+        }
+        if (!prev.qid && a.qid) prev.qid = a.qid;
+        if ((a.sitelinks ?? 0) > (prev.sitelinks ?? 0)) prev.sitelinks = a.sitelinks;
+      }
+    }
+    const all = [...merged.values()];
     const owners = new Map<string, Set<string>>();
     for (const a of all) for (const al of a.aliases) owners.set(`${a.countryCode}|${al}`, (owners.get(`${a.countryCode}|${al}`) ?? new Set()).add(a.econ == null ? "?" : a.econ.toFixed(2)));
     for (const a of all) for (const al of [...a.aliases]) if ((owners.get(`${a.countryCode}|${al}`)?.size ?? 0) > 1 && al !== fold(a.name)) a.aliases.delete(al);
 
-    const seen = new Set<string>();
     const values = all
-      .filter((a) => a.aliases.size && !seen.has(`${a.countryCode}|${a.kind}|${a.name}`) && (seen.add(`${a.countryCode}|${a.kind}|${a.name}`), true))
+      .filter((a) => a.aliases.size)
       .map((a) => ({
         countryCode: a.countryCode, kind: a.kind, qid: a.qid, name: a.name.slice(0, 200), aliases: [...a.aliases].slice(0, 30), partyLabel: a.partyLabel,
         econ: a.econ == null ? null : String(a.econ), galtan: a.galtan == null ? null : String(a.galtan), scoreSource: a.scoreSource, sitelinks: a.sitelinks,

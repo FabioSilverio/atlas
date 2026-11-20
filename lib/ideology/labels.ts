@@ -30,9 +30,10 @@ export const FAMILY_RULES: [string, RegExp][] = [
   ["right", /\b(right-wing populism|far-right|ultranationalism|national conservatism|nativism|anti-immigration|opposition to immigration|euroscepticism|hindutva|national populism)\b/i],
   ["chr", /\b(christian democracy|christian right|catholic social teaching)\b/i],
   ["con", /\b(conservatism|liberal conservatism|social conservatism|traditionalism|monarchism)\b/i],
-  ["soc", /\b(social democracy|democratic socialism|socialism|labourism|labour|left-wing populism|progressivism|pan-africanism|bolivarianism|peronism|kemalism)\b/i],
+  ["soc", /\b(social democracy|democratic socialism|socialism|labourism|labour|left-wing populism|progressivism|pan-africanism|bolivarianism|peronism|kemalism|african socialism|arab socialism|nasserism|sankarism|anti-imperialism)\b/i],
   ["agr", /\b(agrarianism|ruralism)\b/i],
-  ["lib", /\b(liberalism|classical liberalism|social liberalism|economic liberalism|neoliberalism|libertarianism|liberal democracy|centrism)\b/i],
+  ["lib", /\b(liberalism|classical liberalism|social liberalism|economic liberalism|neoliberalism|libertarianism|liberal democracy|centrism|pro-europeanism|reformism)\b/i],
+  ["con", /\b(nationalism|sovereigntism|patriotism)\b/i],
 ];
 
 export function familyOf(labels: string[]): { family: string; matched: string } | null {

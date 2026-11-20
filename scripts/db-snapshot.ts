@@ -4,6 +4,7 @@
 //
 //   tsx scripts/db-snapshot.ts export <dir>   # dump every table
 //   tsx scripts/db-snapshot.ts import <dir>   # load into a database whose schema is already pushed
+import { spawnSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -71,23 +72,43 @@ async function importAll() {
   const { tables: manifest } = JSON.parse(await readFile(path.join(dir, "manifest.json"), "utf8")) as { tables: Record<string, string[]> };
   const present = new Set(await tables());
   const files = new Set(await readdir(dir));
-  await sql.begin(async (tx) => {
-    // Foreign keys are checked by the source database already; skip them while loading.
-    await tx`set local session_replication_role = replica`;
-    for (const t of present) await tx`truncate ${tx(t)} cascade`;
-    for (const [t, cols] of Object.entries(manifest)) {
-      if (!present.has(t) || !files.has(`${t}.tsv.gz`)) continue;
-      // Columns dropped from the schema since the snapshot cannot be loaded; new ones take their default.
-      const current = new Set(await columns(t));
-      if (cols.some((c) => !current.has(c))) {
-        console.warn(`pulado ${t}: colunas removidas do esquema`);
-        continue;
-      }
-      const sink = await tx`copy ${tx(t)} (${tx(cols)}) from stdin`.writable();
-      await pipeline(createReadStream(path.join(dir, `${t}.tsv.gz`)), createGunzip(), sink);
-      console.log(`importado ${t}`);
+  const hasPsql = spawnSync("psql", ["--version"], { stdio: "ignore" }).status === 0;
+  for (const t of present) await sql.unsafe(`truncate "${t}" cascade`);
+  for (const [t, cols] of Object.entries(manifest)) {
+    if (!present.has(t) || !files.has(`${t}.tsv.gz`)) continue;
+    const current = new Set(await columns(t));
+    if (cols.some((c) => !current.has(c))) {
+      console.warn(`pulado ${t}: colunas removidas do esquema`);
+      continue;
     }
-  });
+    const filePath = path.join(dir, `${t}.tsv.gz`);
+    if (hasPsql) {
+      const colList = cols.map((c) => `"${c}"`).join(", ");
+      const child = spawn("psql", [url!, "-v", "ON_ERROR_STOP=1", "-q", "-c", `SET session_replication_role = replica; COPY "${t}" (${colList}) FROM STDIN`], {
+        stdio: ["pipe", "inherit", "inherit"],
+      });
+      await pipeline(createReadStream(filePath), createGunzip(), child.stdin);
+      const [code] = (await once(child, "exit")) as [number | null];
+      if (code !== 0) throw new Error(`psql falhou em ${t} (exit ${code})`);
+    } else {
+      const conn = postgres(url!, { max: 1, onnotice: () => {} });
+      try {
+        await conn.begin(async (tx) => {
+          await tx`set local session_replication_role = replica`;
+          const sink = await tx`copy ${tx(t)} (${tx(cols)}) from stdin`.writable();
+          const src = createReadStream(filePath).pipe(createGunzip());
+          for await (const chunk of src) {
+            if (!sink.write(chunk)) await once(sink, "drain");
+          }
+          sink.end();
+          await once(sink, "finish");
+        });
+      } finally {
+        await conn.end({ timeout: 2 });
+      }
+    }
+    console.log(`importado ${t}`);
+  }
   // Serial sequences continue after the highest id.
   const seqs = await sql<{ t: string; c: string }[]>`
     select table_name as t, column_name as c from information_schema.columns
