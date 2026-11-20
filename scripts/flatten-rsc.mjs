@@ -3,7 +3,7 @@
 // requests them with dots (pais/BRA/__next.(atlas).pais.$d$code.__PAGE__.txt).
 // A Next server maps one to the other; a static host cannot, so copy each payload
 // to the dotted name as well. Usage: node scripts/flatten-rsc.mjs out
-import { copyFile, readdir } from "node:fs/promises";
+import { copyFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.argv[2] ?? "out";
@@ -28,4 +28,5 @@ async function flatten(segDir, parent, prefix) {
 }
 
 await walk(root);
+await writeFile(path.join(root, ".nojekyll"), "");
 console.log(`payloads achatados: ${copied}`);

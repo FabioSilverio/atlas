@@ -156,7 +156,7 @@
     "id": "atlas-ai",
     "name": "IA local ATLAS (Qwen 2.5 via Ollama)",
     "publisher": "ATLAS / Alibaba Qwen (Apache 2.0)",
-    "url": "https://github.com/FabioSilverio/atlas/blob/main/.github/workflows/ai.yml",
+    "url": "https://github.com/FabioSilverio/atlas/blob/main/.github/workflows/pipeline.yml",
     "license": "Apache 2.0 (modelo)",
     "citation": "Resumos, temas e teses gerados por modelo aberto rodando no GitHub Actions.",
     "version": "qwen2.5:3b"
@@ -199,11 +199,11 @@
   },
   {
     "id": "reddit",
-    "name": "Reddit — subreddits nacionais",
-    "publisher": "Reddit",
-    "url": "https://www.reddit.com/",
+    "name": "Reddit — subreddits nacionais (via Arctic Shift)",
+    "publisher": "Reddit / Arctic Shift",
+    "url": "https://arctic-shift.photon-reddit.com/",
     "license": "Metadados (título, link, pontuação)",
-    "citation": "Posts mais votados do dia nos subreddits de cada país (Wikidata P3984).",
+    "citation": "Posts mais votados do dia nos subreddits de cada país (Wikidata P3984), lidos pelo arquivo público Arctic Shift.",
     "version": "ao vivo"
   },
   {

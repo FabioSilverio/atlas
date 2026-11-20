@@ -160,36 +160,46 @@ export const monitorJob: Job = {
     for (const b of chunks(checked, 500)) await db.execute(sql`update channels set checked_at = now() where channel_id in ${sql.raw(`(${b.map((id) => `'${id.replace(/'/g, "")}'`).join(",")})`)}`);
 
     log.info(`monitor: vídeos ${stats.youtube ?? 0} de ${checked.length} canais`);
-    // ── 4. Reddit (national subreddits from Wikidata P3984) ──────
+    // ── 4. Reddit (national subreddits from Wikidata P3984, via Arctic Shift public archive) ──
     const subs = await subreddits(countries);
-    let redditBlocked = 0;
-    let redditTried = 0;
-    await pool(subs, 1, async ([code, sub]) => {
-      // Reddit blocks many automated clients outright: stop after three refusals in a row.
-      if (redditTried >= 3 && redditBlocked === redditTried) return;
-      redditTried++;
+    const iso2By = new Map(countries.map((c) => [c.code, c.iso2]));
+    const subTasks = subs.filter(([code]) => (iso2By.get(code) && GNEWS_EDITIONS[iso2By.get(code)!]) || hash(code) % 2 === hour % 2);
+    const redditAfter = Math.floor(Date.now() / 1000) - 30 * 3600;
+    let redditConsecFail = 0;
+    await pool(subTasks, 3, async ([code, sub]) => {
+      if (redditConsecFail >= 8) return;
       try {
-        const res = await fetch(`https://www.reddit.com/r/${sub}/top.json?t=day&limit=25&raw_json=1`, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(15_000) });
-        if (res.status === 403 || res.status === 429 || res.status === 404) {
-          redditBlocked++;
+        const url = `https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=${encodeURIComponent(sub)}&after=${redditAfter}&limit=100&sort=desc`;
+        const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(15_000) });
+        if (res.status === 429 || res.status >= 500) {
+          redditConsecFail++;
+          bump("redditFailed");
           return;
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as { data?: { children?: { data: { title: string; permalink: string; score: number; created_utc: number; num_comments: number } }[] } };
-        for (const { data: p } of json.data?.children ?? []) {
+        if (!res.ok) return;
+        redditConsecFail = 0;
+        const json = (await res.json()) as {
+          data?: { title?: string; permalink?: string; score?: number; created_utc?: number; num_comments?: number; removed_by_category?: string | null }[];
+        };
+        const top = (json.data ?? [])
+          .filter((p) => p.title && p.permalink && !p.removed_by_category)
+          .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (b.num_comments ?? 0) - (a.num_comments ?? 0))
+          .slice(0, 25);
+        for (const p of top) {
           out.push({
-            countryCode: code, platform: "reddit", title: p.title.slice(0, 400), url: `https://www.reddit.com${p.permalink}`, author: `r/${sub}`,
-            publishedAt: new Date(p.created_utc * 1000), metric: String(p.score), metricKind: "score", terms: keyphrases(p.title), sourceId: "reddit", ...tag(code, p.title),
+            countryCode: code, platform: "reddit", title: p.title!.slice(0, 400), url: `https://www.reddit.com${p.permalink}`, author: `r/${sub}`,
+            publishedAt: new Date((p.created_utc ?? 0) * 1000), metric: String(p.score ?? 1), metricKind: "score", terms: keyphrases(p.title!), sourceId: "reddit", ...tag(code, p.title!),
           });
           bump("reddit");
         }
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 250));
       } catch (err) {
+        redditConsecFail++;
         bump("redditFailed");
         log.warn(`reddit r/${sub}: ${(err as Error).message}`);
       }
     });
-    if (redditBlocked) stats.redditBlocked = redditBlocked;
+    log.info(`monitor: reddit ${stats.reddit ?? 0} em ${subTasks.length} subreddits`);
 
     // ── 5. Curated voices on X (FxTwitter's public API; the official API if a token is set) ──
     await xVoices(out, tag, bump);

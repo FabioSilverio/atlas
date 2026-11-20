@@ -187,8 +187,8 @@ export default async function Metodologia() {
           <p>
             O termômetro soma os itens das últimas 72 h que têm lado: notícias pesam 1; vídeos, posts e tendências pesam pelo logaritmo de visualizações, votos ou
             volume, para que um viral não apague o resto. Cada plataforma pesa igual no total. Esquerda é posição ≤ −0,15, direita ≥ +0,15. A comparação é com os 7
-            dias anteriores. Limites: citar não é apoiar (crítica também conta), a cobertura varia muito entre países e plataformas, e o Reddit pode bloquear
-            coletas automáticas.
+            dias anteriores. Limites: citar não é apoiar (crítica também conta), a cobertura varia muito entre países e plataformas, e os posts do Reddit vêm do
+            arquivo público Arctic Shift.
           </p>
           <p>
             Termos em alta: palavras-chave das manchetes, posts e vídeos das últimas 24 h (72 h para vídeos) comparadas à média diária dos 3 dias anteriores,
