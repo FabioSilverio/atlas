@@ -134,7 +134,7 @@ export const actorsJob: Job = {
         a.scoreSource = p.scoreSource;
       }
       const last = a.name.split(" ").at(-1) ?? "";
-      if (a.name.includes(" ") && last.length >= 5 && !COMMON_SURNAMES.has(fold(last))) addAlias(a, last, "person");
+      if (a.name.includes(" ") && last.length >= 4 && !COMMON_SURNAMES.has(fold(last))) addAlias(a, last, "person");
     }
 
     // Current chief executives (from governments + government_positions): always citeable with their government's position.
@@ -155,7 +155,7 @@ export const actorsJob: Job = {
       };
       addAlias(a, l.name, "person");
       const last = l.name.split(" ").at(-1) ?? "";
-      if (l.name.includes(" ") && last.length >= 5 && !COMMON_SURNAMES.has(fold(last))) addAlias(a, last, "person");
+      if (l.name.includes(" ") && last.length >= 4 && !COMMON_SURNAMES.has(fold(last))) addAlias(a, last, "person");
       people.push(a);
     }
 
@@ -241,7 +241,8 @@ const COMMON_SURNAMES = new Set(
   ("silva santos oliveira souza sousa lima pereira ferreira costa rodrigues almeida nascimento gomes martins araujo carvalho cardoso ribeiro alves faria barbosa rocha dias moreira mendes freitas " +
     "garcia lopez gonzalez hernandez martinez rodriguez perez sanchez ramirez torres flores diaz fernandez gomez ruiz jimenez moreno alvarez romero navarro " +
     "smith johnson williams brown jones miller davis wilson taylor anderson thomas moore martin white harris clark lewis young wright scott green baker adams nelson hill campbell mitchell roberts carter phillips evans turner parker collins edwards stewart morris murphy cook rogers morgan cooper " +
-    "muller schmidt schneider fischer weber meyer wagner becker rossi russo ferrari bianchi romano bernard dubois robert richard petit durand nowak kowalski singh kumar sharma khan ahmed hassan mohamed ibrahim").split(" "),
+    "muller schmidt schneider fischer weber meyer wagner becker rossi russo ferrari bianchi romano bernard dubois robert richard petit durand nowak kowalski singh kumar sharma khan ahmed hassan mohamed ibrahim " +
+    "lima cruz dias reis mota maia pina vera silva jose juan luis paul john mark king hall hill wood ward long reed ross bell cole gray shaw chen wang yang zhao zhou park choi jung kang sato").split(" "),
 );
 
 /**

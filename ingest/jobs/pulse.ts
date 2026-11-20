@@ -144,7 +144,7 @@ export const pulseJob: Job = {
         if (r.platform !== "youtube") return false;
         if (r.author && SPORTS_CHANNEL_RE.test(r.author)) return false;
         if (NON_POLITICAL_VIDEO_RE.test(r.title)) return false;
-        return r.owner_kind === "party" || r.owner_kind === "politician" || r.owner_kind === "voice" || r.actor_ids.length > 0 || r.terms.some((t) => politicalTermKeys.has(fold(t)));
+        return r.owner_kind === "party" || r.owner_kind === "politician" || r.owner_kind === "voice" || r.actor_ids.length > 0;
       };
       const yt72 = rows.filter((r) => pubAge(r) <= 72 && isPoliticalVideo(r));
       const ytPool = yt72.length >= 12 ? yt72 : rows.filter((r) => pubAge(r) <= 168 && isPoliticalVideo(r));
