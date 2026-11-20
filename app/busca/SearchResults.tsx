@@ -53,6 +53,8 @@ export function SearchResults() {
         onSubmit={(e) => {
           e.preventDefault();
           const v = new FormData(e.currentTarget).get("q")?.toString().trim() ?? "";
+          // Close the phone keyboard so the results are visible right away.
+          (e.currentTarget.elements.namedItem("q") as HTMLInputElement | null)?.blur();
           router.replace(v ? `/busca?q=${encodeURIComponent(v)}` : "/busca");
         }}
         className="mt-2 flex gap-2"
@@ -60,6 +62,11 @@ export function SearchResults() {
         <input
           key={q}
           name="q"
+          type="search"
+          enterKeyHint="search"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
           defaultValue={q}
           placeholder="Digite uma pessoa, termo, partido ou assunto para pesquisar e gerar dossiê…"
           className="h-11 min-w-0 flex-1 border border-line-strong bg-bg px-3.5 font-mono text-base text-ink placeholder:text-muted focus:border-cyan-dim focus:outline-none"

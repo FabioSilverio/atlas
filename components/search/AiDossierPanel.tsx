@@ -14,6 +14,19 @@ import {
 
 const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
 
+const SOURCE_LABEL: Record<string, string> = {
+  youtube: "YouTube",
+  x: "X",
+  reddit: "Reddit",
+  news: "Google Notícias",
+  wiki: "Wikipédia",
+  social: "Instagram/TikTok",
+};
+
+function listJoin(items: string[]) {
+  return items.length > 1 ? `${items.slice(0, -1).join(", ")} e ${items.at(-1)}` : items[0] ?? "";
+}
+
 /**
  * Live internet research + on-demand local AI dossier panel.
  * Scrapes YouTube, X, Reddit, Google News and Wikipedia for any query via /api/research,
@@ -23,7 +36,7 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
   const [mode, setMode] = useState<LocalEngineMode>("webgpu");
   const [webModel, setWebModel] = useState<string>(WEBGPU_MODELS[0].id);
   const [ollamaUrl, setOllamaUrl] = useState("http://127.0.0.1:11434");
-  const [ollamaModel, setOllamaModel] = useState("qwen2.5:3b");
+  const [ollamaModel, setOllamaModel] = useState("qwen3.5:4b");
 
   const [evidence, setEvidence] = useState<DossierEvidence | null>(null);
   const [status, setStatus] = useState<"idle" | "loading_model" | "generating" | "done" | "error">("idle");
@@ -33,7 +46,6 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
   const [copied, setCopied] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
-  const [expanded, setExpanded] = useState(false);
   const [retry, setRetry] = useState(0);
   const [updating, setUpdating] = useState(false);
   const [researchError, setResearchError] = useState(false);
@@ -86,31 +98,40 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
 
   useEffect(() => {
     const request = new AbortController();
-    gatherDossierEvidence(query, {
-      quick: quick && !expanded,
-      includeRecent: !quick,
-      signal: request.signal,
-    }).then((ev) => {
-      if (request.signal.aborted) return;
-      setEvidence((previous) => mergeDossierEvidence(previous, ev));
-      setResearchError(!ev.liveOk);
+    // Phones get a fast first pass, then the full search (threads, replies, video captions)
+    // continues on its own; if that second pass fails, the first results simply stay.
+    const phases = quick ? [true, false] : [false];
+    (async () => {
+      let anyOk = false;
+      for (const [index, phaseQuick] of phases.entries()) {
+        if (index > 0) setUpdating(true);
+        try {
+          const ev = await gatherDossierEvidence(query, { quick: phaseQuick, includeRecent: !quick, signal: request.signal });
+          if (request.signal.aborted) return;
+          setEvidence((previous) => mergeDossierEvidence(previous, ev));
+          if (ev.liveOk) {
+            anyOk = true;
+            setResearchError(false);
+          }
+        } catch {
+          if (request.signal.aborted) return;
+        }
+      }
+      setResearchError(!anyOk);
       setUpdating(false);
-    }).catch(() => {
-      if (request.signal.aborted) return;
-      setResearchError(true);
-      setUpdating(false);
-    });
+    })();
     return () => {
       request.abort();
       abortRef.current?.abort();
     };
-  }, [query, quick, expanded, retry]);
+  }, [query, quick, retry]);
 
   if (query.trim().length < 2) return null;
 
   const loadingEv = evidence === null && !researchError;
   const busy = status === "loading_model" || status === "generating";
-  const totalLive = evidence ? evidence.youtube.length + evidence.x.length + evidence.reddit.length + evidence.news.length + evidence.wiki.length + evidence.background.length : 0;
+  const totalLive = evidence ? evidence.youtube.length + evidence.x.length + evidence.reddit.length + evidence.news.length + evidence.wiki.length + evidence.social.length + evidence.background.length : 0;
+  const failedNames = (evidence?.failed ?? []).map((name) => SOURCE_LABEL[name] ?? name);
 
   const copyMd = async () => {
     if (!output) return;
@@ -131,9 +152,9 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
           <h2 className="mt-1 text-[22px] font-medium text-ink">“{query}”</h2>
           <p className="mt-1 text-[13px] text-muted">
             {loadingEv
-              ? "Buscando ao vivo no YouTube, X, Reddit, Google Notícias e Wikipédia…"
+              ? "Buscando ao vivo no YouTube, X, Reddit, Instagram, TikTok, Bluesky, notícias e Wikipédia…"
               : evidence
-                ? `${evidence.youtube.length} vídeos no YouTube · ${evidence.x.length} posts no X · ${evidence.reddit.length} tópicos no Reddit · ${evidence.news.length} notícias · ${evidence.wiki.length} Wikipédia`
+                ? `${evidence.youtube.length} vídeos · ${evidence.x.length} posts no X · ${evidence.reddit.length} tópicos no Reddit · ${evidence.social.length} em outras redes · ${evidence.news.length} notícias · ${evidence.wiki.length} Wikipédia`
                 : null}
           </p>
         </div>
@@ -259,7 +280,7 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
           <p role="status">
             {researchError
               ? totalLive > 0 ? "A atualização falhou. Os resultados anteriores continuam abaixo." : "A pesquisa ao vivo está indisponível agora."
-              : evidence?.partial ? "Algumas fontes ficaram indisponíveis. A pesquisa mostra as fontes que responderam."
+              : evidence?.partial ? `${failedNames.length ? `${listJoin(failedNames)} não ${failedNames.length > 1 ? "responderam" : "respondeu"} agora.` : "Algumas fontes não responderam agora."} O restante da pesquisa está abaixo.`
               : "Nenhuma fonte encontrada para este termo."}
           </p>
           {(researchError || evidence?.partial) && <button type="button" className="min-h-11 text-cyan"
@@ -269,14 +290,11 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
         </div>
       )}
 
-      {quick && !expanded && !loadingEv && (
-        <button type="button" className="mt-4 min-h-11 border border-line px-3 text-sm text-cyan"
-          onClick={() => { setUpdating(true); setResearchError(false); setExpanded(true); }}>
-          Aprofundar pesquisa
-        </button>
+      {updating && (
+        <p role="status" className="mt-3 flex items-center gap-2 text-sm text-muted">
+          <span className="live-dot inline-block size-2 rounded-full bg-cyan" /> Buscando conversas, respostas e mais fontes…
+        </p>
       )}
-
-      {updating && <p role="status" className="mt-3 text-sm text-muted">Carregando mais fontes…</p>}
 
       {evidence && evidence.background.length > 0 && (
         <div className="mt-5">
@@ -352,7 +370,7 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
           )}
 
           {/* X + Reddit + News */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-2">
             {evidence.x.length > 0 && (
               <div>
                 <div className="label mb-2">X — posts relevantes ({evidence.x.length})</div>
@@ -409,6 +427,25 @@ export function AiDossierPanel({ query, hits, quick = false }: { query: string; 
                           {(r.contextPartial || (r.context?.length ?? 0) > 10) && <p>Contexto parcial.</p>}
                         </details>
                       )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {evidence.social.length > 0 && (
+              <div>
+                <div className="label mb-2">Instagram, TikTok e outras redes ({evidence.social.length})</div>
+                <ul className="space-y-2">
+                  {evidence.social.slice(0, 12).map((s) => (
+                    <li key={s.url + s.title.slice(0, 20)} className="border border-line bg-panel-2 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 font-mono text-[11px] text-muted">
+                        <span className="truncate text-ink-2">{s.platform}{s.author ? ` · ${s.author}` : ""}</span>
+                        {s.engagement != null && s.engagement > 0 && <span className="shrink-0">{compact.format(s.engagement)} int.</span>}
+                      </div>
+                      <a href={s.url} target="_blank" rel="noreferrer" className="mt-1 line-clamp-3 block text-[13.5px] leading-snug text-ink hover:text-cyan">
+                        {s.title}
+                      </a>
                     </li>
                   ))}
                 </ul>

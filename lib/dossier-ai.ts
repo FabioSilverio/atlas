@@ -44,6 +44,15 @@ export type LiveNewsItem = {
   publishedAt: string | null;
 };
 
+export type LiveSocialPost = {
+  platform: string;
+  title: string;
+  author: string | null;
+  url: string;
+  engagement: number | null;
+  publishedAt: string | null;
+};
+
 export type WikiSnippet = {
   lang: "pt" | "en";
   title: string;
@@ -56,20 +65,24 @@ export type DossierEvidence = {
   fetchedAt: string;
   liveOk: boolean;
   partial: boolean;
+  /** Sources that errored and returned nothing (e.g. "x", "reddit"). */
+  failed: string[];
   wiki: WikiSnippet[];
   atlasHits: Hit[];
   youtube: LiveYouTube[];
   x: LiveXPost[];
   reddit: LiveRedditPost[];
   news: LiveNewsItem[];
+  social: LiveSocialPost[];
   background: (LiveNewsItem & { extract?: string })[];
 };
 
 export type LocalEngineMode = "webgpu" | "ollama";
 
 export const WEBGPU_MODELS = [
-  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen 2.5 1.5B (rápido · ~1 GB)" },
-  { id: "Qwen2.5-3B-Instruct-q4f16_1-MLC", label: "Qwen 2.5 3B (mais detalhado · ~1,9 GB)" },
+  { id: "Qwen3.5-2B-q4f16_1-MLC", label: "Qwen 3.5 2B (rápido · ~1,5 GB)" },
+  { id: "Qwen3.5-4B-q4f16_1-MLC", label: "Qwen 3.5 4B (mais detalhado · ~2,6 GB)" },
+  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen 2.5 1.5B (GPU fraca · ~1 GB)" },
 ] as const;
 
 type RecentSignal = {
@@ -123,22 +136,27 @@ function loadRecentSignals(): Promise<RecentSignal[]> {
 type LiveApiResponse = {
   fetchedAt?: string;
   partial?: boolean;
+  failed?: string[];
   youtube?: LiveYouTube[];
   x?: LiveXPost[];
   reddit?: LiveRedditPost[];
   news?: LiveNewsItem[];
+  social?: LiveSocialPost[];
   background?: (LiveNewsItem & { extract?: string })[];
   wiki?: WikiSnippet[];
 };
 
 async function fetchLiveWeb(query: string, quick: boolean, signal: AbortSignal): Promise<LiveApiResponse | null> {
-  try {
-    const path = `/api/research?q=${encodeURIComponent(query)}${quick ? "&quick=1" : ""}`;
-    const result = await fetchResearchJson<LiveApiResponse>(path, 16_000, signal);
-    return Array.isArray(result?.news) && Array.isArray(result?.youtube) ? result : null;
-  } catch {
-    return null;
+  const path = `/api/research?q=${encodeURIComponent(query)}${quick ? "&quick=1" : ""}`;
+  // Mobile connections drop requests often: retry once before reporting a failure.
+  for (let attempt = 0; attempt < 2 && !signal.aborted; attempt++) {
+    try {
+      const result = await fetchResearchJson<LiveApiResponse>(path, quick ? 15_000 : 22_000, signal);
+      if (Array.isArray(result?.news) && Array.isArray(result?.youtube)) return result;
+    } catch {}
+    if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 800));
   }
+  return null;
 }
 
 function ytId(url: string): string | null {
@@ -209,12 +227,14 @@ export async function gatherDossierEvidence(
     fetchedAt: live?.fetchedAt ?? new Date().toISOString(),
     liveOk: Boolean(live),
     partial: live?.partial === true,
+    failed: Array.isArray(live?.failed) ? live.failed : [],
     wiki: live?.wiki ?? [],
     atlasHits: [],
     youtube: youtube.slice(0, 16),
     x: x.slice(0, 16),
     reddit: reddit.slice(0, 14),
     news: news.slice(0, 16),
+    social: Array.isArray(live?.social) ? live.social.slice(0, 18) : [],
     background: live?.background ?? [],
   };
 }
@@ -236,6 +256,7 @@ export function mergeDossierEvidence(previous: DossierEvidence | null, next: Dos
     x: merge(next.x, previous.x),
     reddit: merge(next.reddit, previous.reddit),
     news: merge(next.news, previous.news),
+    social: merge(next.social, previous.social),
     background: merge(next.background, previous.background),
   };
 }
@@ -269,7 +290,7 @@ export function buildDossierMessages(ev: DossierEvidence): { role: "system" | "u
     for (const n of ev.background.slice(0, 4)) lines.push(`- [${n.source ?? "Imprensa"}] ${n.title} (${n.url}) | ${n.extract ?? "Somente manchete, pista para verificação."}`);
   }
   for (const [label, posts] of [["X", ev.x], ["Reddit", ev.reddit]] as const) {
-    lines.push(`## ${label}${label === "Reddit" ? " (?ltimos 90 dias)" : ""}`);
+    lines.push(`## ${label}${label === "Reddit" ? " (últimos 90 dias)" : ""}`);
     if (!posts.length) lines.push("Nenhuma conversa encontrada nas fontes consultadas.");
     for (const post of posts.slice(0, 2)) {
       lines.push(`- ${post.publishedAt ?? "Data desconhecida"} | ${post.url}`);
@@ -280,6 +301,13 @@ export function buildDossierMessages(ev: DossierEvidence): { role: "system" | "u
       for (const entry of context.slice(0, 6)) {
         lines.push(`  - ${entry.label} (${entry.author ?? label}, ${entry.url}): ${entry.text.slice(0, 300)}`);
       }
+    }
+  }
+
+  if (ev.social.length) {
+    lines.push("## INSTAGRAM, TIKTOK, FACEBOOK, THREADS E BLUESKY");
+    for (const post of ev.social.slice(0, 6)) {
+      lines.push(`- [${post.platform}${post.author ? ` ${post.author}` : ""}${post.publishedAt ? `, ${post.publishedAt.slice(0, 10)}` : ""}] ${post.title.slice(0, 280)}`);
     }
   }
 
@@ -327,6 +355,7 @@ type WebLLMEngine = {
         temperature?: number;
         max_tokens?: number;
         stream: true;
+        extra_body?: { enable_thinking?: boolean };
       }) => Promise<AsyncIterable<{ choices: { delta?: { content?: string | null } }[] }>>;
     };
   };
@@ -352,7 +381,7 @@ export async function streamWebGPUDossier(opts: {
   }
   const webllm = await import("@mlc-ai/web-llm");
   if (!cachedEngine || cachedModelId !== opts.modelId) {
-    opts.onProgress(0.01, "Preparando Qwen 2.5 local no navegador (fica em cache após o 1º uso)…");
+    opts.onProgress(0.01, "Preparando o modelo Qwen local no navegador (fica em cache após o 1º uso)…");
     const eng = (await webllm.CreateMLCEngine(opts.modelId, {
       initProgressCallback: (p) => opts.onProgress(p.progress ?? 0, p.text ?? "Carregando modelo…"),
     }, { context_window_size: 8192 })) as unknown as WebLLMEngine;
@@ -366,17 +395,61 @@ export async function streamWebGPUDossier(opts: {
     const stream = await cachedEngine.chat.completions.create({
       messages: buildDossierMessages(opts.evidence),
       temperature: 0.25,
-      max_tokens: 1500,
+      max_tokens: 1800,
       stream: true,
+      // Qwen 3.x reasons in a hidden <think> block by default; the dossier only needs the answer.
+      ...(opts.modelId.startsWith("Qwen3") ? { extra_body: { enable_thinking: false } } : {}),
     });
+    const visible = withoutThinking(opts.onToken);
     for await (const part of stream) {
       if (opts.signal.aborted) break;
       const text = part.choices?.[0]?.delta?.content;
-      if (text) opts.onToken(text);
+      if (text) visible(text);
     }
   } finally {
     opts.signal.removeEventListener("abort", onAbort);
   }
+}
+
+/** Drops any <think>…</think> block a reasoning model streams before its answer. */
+export function withoutThinking(onToken: (chunk: string) => void) {
+  let buffer = "";
+  let thinking = false;
+  let started = false;
+  return (chunk: string) => {
+    buffer += chunk;
+    while (buffer) {
+      if (thinking) {
+        const end = buffer.indexOf("</think>");
+        if (end < 0) {
+          buffer = buffer.slice(-8);
+          return;
+        }
+        buffer = buffer.slice(end + 8);
+        thinking = false;
+        continue;
+      }
+      const start = buffer.indexOf("<think>");
+      if (start >= 0) {
+        const before = buffer.slice(0, start);
+        if (before.trim() || started) onToken(before);
+        started ||= Boolean(before.trim());
+        buffer = buffer.slice(start + 7);
+        thinking = true;
+        continue;
+      }
+      // Hold back a possible partial "<think" tag at the end of the chunk.
+      const hold = buffer.lastIndexOf("<");
+      const safe = hold >= 0 && "<think>".startsWith(buffer.slice(hold)) ? buffer.slice(0, hold) : buffer;
+      const out = started ? safe : safe.replace(/^\s+/, "");
+      if (out) {
+        onToken(out);
+        started = true;
+      }
+      buffer = buffer.slice(safe.length);
+      return;
+    }
+  };
 }
 
 export async function streamOllamaDossier(opts: {
@@ -394,6 +467,7 @@ export async function streamOllamaDossier(opts: {
       model: opts.model,
       messages: buildDossierMessages(opts.evidence),
       stream: true,
+      think: false,
       options: { temperature: 0.25, num_ctx: 8192 },
     }),
     signal: opts.signal,
@@ -401,6 +475,7 @@ export async function streamOllamaDossier(opts: {
   if (!res.ok || !res.body) {
     throw new Error(`Ollama respondeu HTTP ${res.status}. Confira se o modelo "${opts.model}" está baixado e se OLLAMA_ORIGINS=* está ativo.`);
   }
+  const visible = withoutThinking(opts.onToken);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = "";
@@ -414,7 +489,7 @@ export async function streamOllamaDossier(opts: {
       if (!line.trim()) continue;
       try {
         const j = JSON.parse(line) as { message?: { content?: string } };
-        if (j.message?.content) opts.onToken(j.message.content);
+        if (j.message?.content) visible(j.message.content);
       } catch {}
     }
   }

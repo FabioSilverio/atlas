@@ -1,5 +1,5 @@
-// On-demand live web scraper for ATLAS /busca?q=... (YouTube, X, Reddit, News, Wikipedia).
-// Only runs when a user explicitly submits a search query; cached 15 min at Vercel's edge.
+// On-demand live web scraper for ATLAS /busca?q=... (YouTube, X, Reddit, Instagram, TikTok, Facebook,
+// Threads, Bluesky, Google News, Wikipedia, Câmara and Senado). Runs only when a user submits a search.
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const ATLAS_UA = "ATLAS/0.1 (https://github.com/FabioSilverio/atlas)";
@@ -92,10 +92,10 @@ async function searchYouTube(upstream, q, contextSearch = false) {
   return (contextSearch ? out : out.sort((a, b) => (b.views ?? 0) - (a.views ?? 0))).slice(0, 14);
 }
 
-async function fetchGNewsRss(upstream, query, hl = "pt-BR", gl = "BR", ceid = "BR:pt-419") {
+async function fetchGNewsRss(upstream, query, hl = "pt-BR", gl = "BR", ceid = "BR:pt-419", { withSourceUrl = false } = {}) {
   try {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
-    const res = await upstream(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) });
+    const res = await upstream(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(6000) });
     if (!res.ok) return [];
     const xml = await res.text();
     const out = [];
@@ -104,6 +104,7 @@ async function fetchGNewsRss(upstream, query, hl = "pt-BR", gl = "BR", ceid = "B
       const rawTitle = decodeHtml(block.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? "");
       const link = decodeHtml(block.match(/<link>([\s\S]*?)<\/link>/)?.[1] ?? "");
       const source = decodeHtml(block.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1] ?? "");
+      const sourceUrl = block.match(/<source url="([^"]*)"/)?.[1] ?? null;
       const pubDate = decodeHtml(block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] ?? "");
       if (!rawTitle || !link) continue;
       const title = source ? rawTitle.replace(new RegExp(`\\s+-\\s+${source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), "").trim() : rawTitle;
@@ -113,11 +114,47 @@ async function fetchGNewsRss(upstream, query, hl = "pt-BR", gl = "BR", ceid = "B
         source: source || null,
         url: link,
         publishedAt: d && !Number.isNaN(d.getTime()) ? d.toISOString() : null,
+        ...(withSourceUrl ? { sourceUrl } : {}),
       });
     }
     return out;
   } catch {
     return [];
+  }
+}
+
+// Google News wraps every link in an opaque article id. Resolve it to the real URL
+// (two small requests) so X posts can be hydrated with author, metrics and replies.
+async function decodeGoogleNewsUrl(upstream, link) {
+  const id = link.match(/news\.google\.com\/(?:rss\/)?articles\/([\w-]+)/)?.[1];
+  if (!id) return null;
+  try {
+    const page = await upstream(`https://news.google.com/rss/articles/${id}`, {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!page.ok) return null;
+    const html = await page.text();
+    const signature = html.match(/data-n-a-sg="([^"]+)"/)?.[1];
+    const timestamp = Number(html.match(/data-n-a-ts="([^"]+)"/)?.[1]);
+    if (!signature || !Number.isFinite(timestamp)) return null;
+    const inner = JSON.stringify([
+      "garturlreq",
+      [["X", "X", ["X", "X"], null, null, 1, 1, "US:en", null, 1, null, null, null, null, null, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1, null, 0, 0, null, 0],
+      id, timestamp, signature,
+    ]);
+    const response = await upstream("https://news.google.com/_/DotsSplashUi/data/batchexecute", {
+      method: "POST",
+      headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body: new URLSearchParams({ "f.req": JSON.stringify([[["Fbv4je", inner, null, "generic"]]]) }),
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!response.ok) return null;
+    const text = await response.text();
+    const url = text.match(/\\"garturlres\\",\\"(https?:[^"\\]+)\\"/)?.[1];
+    return url && /^https:\/\//.test(url) ? url : null;
+  } catch {
+    return null;
   }
 }
 
@@ -143,12 +180,16 @@ const FX = "https://api.fxtwitter.com/2";
 const REDDIT = "https://arctic-shift.photon-reddit.com/api";
 const DAY_MS = 86_400_000;
 
-async function fetchJson(upstream, url, timeout = 6000) {
+async function fetchJson(upstream, url, timeout = 6000, retries = 0) {
   try {
     const response = await upstream(url, {
       headers: { "User-Agent": ATLAS_UA },
       signal: AbortSignal.timeout(timeout),
     });
+    if ((response.status === 429 || response.status === 422) && retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      return fetchJson(upstream, url, timeout, retries - 1);
+    }
     return response.ok ? await response.json() : null;
   } catch {
     return null;
@@ -173,22 +214,75 @@ function xPost(p) {
   };
 }
 
-async function searchX(upstream, q, quick = false) {
-  const handle = /^@[a-z0-9_]{2,25}$/i.test(q) ? q.slice(1) : null;
-  const search = handle ? `from:${handle} OR @${handle}` : `"${q.replaceAll('"', " ")}"`;
-  const directId = q.match(/^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(?:[a-z0-9_]+|i\/web)\/status\/(\d{2,20})(?:[/?#]|$)/i)?.[1];
-  const direct = directId ? await fetchJson(upstream, `${FX}/conversation/${directId}`) : null;
-  const data = directId ? { results: [direct?.status] } : await fetchJson(upstream, `${FX}/search?${new URLSearchParams({ q: search, feed: "latest", count: "16" })}`);
-  const seen = new Set();
-  const matches = (Array.isArray(data?.results) ? data.results : []).filter((p) => {
-    if (!xPost(p) || seen.has(p.id)) return false;
-    seen.add(p.id);
-    return true;
-  }).slice(0, 10);
+const X_STATUS = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([a-z0-9_]{1,25}|i\/web)\/status\/(\d{2,20})(?:[/?#]|$)/i;
 
-  return Promise.all(matches.map(async (p) => {
+// fxtwitter's search endpoint was retired, so X posts are discovered through Google News
+// (which indexes x.com) and then hydrated one by one through fxtwitter's status API.
+async function discoverXPosts(upstream, q, quick) {
+  const handle = /^@[a-z0-9_]{2,25}$/i.test(q) ? q.slice(1) : null;
+  const subject = handle ? `site:x.com/${handle}` : `"${q.replaceAll('"', " ")}" site:x.com`;
+  const [recent, relevant, fx] = await Promise.all([
+    fetchGNewsRss(upstream, `${subject} when:30d`, "pt-BR", "BR", "BR:pt-419", { withSourceUrl: true }),
+    quick ? [] : fetchGNewsRss(upstream, subject, "pt-BR", "BR", "BR:pt-419", { withSourceUrl: true }),
+    // Kept as a bonus in case fxtwitter brings search back; it no longer blocks the request.
+    fetchJson(upstream, `${FX}/search?${new URLSearchParams({ q: handle ? `from:${handle}` : `"${q}"`, feed: "latest", count: "16" })}`, 2500),
+  ]);
+  const seen = new Set();
+  const found = [];
+  for (const p of Array.isArray(fx?.results) ? fx.results : []) {
+    if (xPost(p) && !seen.has(p.id)) {
+      seen.add(p.id);
+      found.push({ raw: p });
+    }
+  }
+  const items = [...recent, ...relevant].filter((item) => /(^|\/\/)(www\.)?(x|twitter)\.com/.test(item.sourceUrl ?? ""));
+  const unique = [...new Map(items.map((item) => [item.title.slice(0, 80), item])).values()].slice(0, quick ? 5 : 8);
+  const decoded = await Promise.all(unique.map((item) => decodeGoogleNewsUrl(upstream, item.url)));
+  unique.forEach((item, index) => {
+    const match = decoded[index]?.match(X_STATUS);
+    if (match && seen.has(match[2])) return;
+    if (match) seen.add(match[2]);
+    found.push({ item, id: match?.[2] ?? null, handle: match?.[1] && match[1] !== "i/web" ? match[1] : null });
+  });
+  return found;
+}
+
+async function searchX(upstream, q, quick = false) {
+  const directId = q.match(X_STATUS)?.[2];
+  if (directId) {
+    const direct = await fetchJson(upstream, `${FX}/conversation/${directId}`);
+    return direct?.status ? [hydrateX(direct.status, direct)] : [];
+  }
+  const found = (await discoverXPosts(upstream, q, quick)).slice(0, 10);
+  const posts = await Promise.all(found.map(async (entry) => {
+    if (entry.raw) {
+      const conversation = quick ? null : await fetchJson(upstream, `${FX}/conversation/${entry.raw.id}`, 4000);
+      return hydrateX(entry.raw, conversation);
+    }
+    if (entry.id) {
+      const conversation = await fetchJson(upstream, `${FX}/${quick ? "status" : "conversation"}/${entry.id}`, quick ? 3000 : 4000);
+      const status = conversation?.status ?? conversation?.tweet;
+      if (xPost(status)) return hydrateX(status, quick ? null : conversation);
+    }
+    // Hydration failed: still show the post text Google indexed, linking to it.
+    const text = entry.item.title.replace(/\s+-\s+X$/, "");
+    return {
+      title: text.slice(0, 320),
+      body: text,
+      author: entry.handle ? `@${entry.handle}` : null,
+      url: entry.id && entry.handle ? `https://x.com/${entry.handle}/status/${entry.id}` : entry.item.url,
+      engagement: null,
+      publishedAt: entry.item.publishedAt,
+      context: [],
+      contextPartial: true,
+    };
+  }));
+  return posts.filter(Boolean);
+}
+
+function hydrateX(p, conversation) {
+  {
     const post = xPost(p);
-    const conversation = direct ?? (quick ? null : await fetchJson(upstream, `${FX}/conversation/${p.id}`, 5000));
     const main = conversation?.status ?? p;
     const used = new Set([p.id]);
     const context = [
@@ -207,29 +301,74 @@ async function searchX(upstream, q, quick = false) {
       context: context.slice(0, 24),
       contextPartial: !conversation?.status || Boolean(conversation.cursor?.bottom) || context.length > 24,
     };
-  }));
+  }
 }
 
+const PULLPUSH = "https://api.pullpush.io/reddit/search";
+
 async function searchReddit(upstream, q, quick = false) {
-  const subs = ["brasil", "brasilivre", "politics", "worldnews", "argentina", "portugal"];
   const cutoff = Date.now() - 90 * DAY_MS;
-  const after = new Date(cutoff).toISOString().slice(0, 10);
-  const lists = await Promise.all(subs.map(async (subreddit) => {
-    const params = new URLSearchParams({ subreddit, title: q, after, limit: "8", sort: "desc" });
-    const result = await fetchJson(upstream, `${REDDIT}/posts/search?${params}`);
-    return Array.isArray(result?.data) ? result.data : [];
-  }));
+  const subject = q.replace(/^@/, "").replaceAll('"', " ").trim();
+  // Arctic Shift times out on wide title scans, so keep its window short and the
+  // subreddit list small; PullPush covers every other subreddit with full-text search.
+  const recentAfter = new Date(Date.now() - 30 * DAY_MS).toISOString().slice(0, 10);
+  const arcticSubs = quick ? ["brasil", "brasilivre"] : ["brasil", "brasilivre", "politics", "worldnews"];
+  const [arctic, pullpush] = await Promise.all([
+    // Arctic Shift rate-limits bursts, so query its subreddits one after another.
+    (async () => {
+      const lists = [];
+      for (const subreddit of arcticSubs) {
+        const params = new URLSearchParams({ subreddit, title: subject, after: recentAfter, limit: "8", sort: "desc" });
+        const result = await fetchJson(upstream, `${REDDIT}/posts/search?${params}`, 4000, 1);
+        if (Array.isArray(result?.data)) lists.push(result.data);
+      }
+      return lists;
+    })(),
+    (async () => {
+      const params = new URLSearchParams({
+        q: subject.includes(" ") ? `"${subject}"` : subject,
+        size: "25",
+        sort: "desc",
+        sort_type: "created_utc",
+        after: String(Math.floor(cutoff / 1000)),
+      });
+      const result = await fetchJson(upstream, `${PULLPUSH}/submission/?${params}`, 5000, 1);
+      return Array.isArray(result?.data) ? result.data : [];
+    })(),
+  ]);
 
-  const posts = lists.flat().filter((p) =>
-    typeof p?.title === "string" && typeof p.permalink === "string" && p.permalink.startsWith("/") && /^[a-z0-9]+$/.test(p.id) &&
-    !p.removed_by_category && p.created_utc * 1000 >= cutoff,
-  ).sort((a, b) => b.created_utc - a.created_utc).slice(0, 10);
+  const words = normalizeSearchText(subject).match(/[a-z0-9]{3,}/g) ?? [];
+  const seen = new Set();
+  const posts = [...arctic.flat(), ...pullpush].filter((p) => {
+    if (typeof p?.title !== "string" || typeof p.permalink !== "string" || !p.permalink.startsWith("/r/") || !/^[a-z0-9]+$/.test(p.id)) return false;
+    if (p.removed_by_category || p.over_18 || seen.has(p.id) || p.created_utc * 1000 < cutoff) return false;
+    if (/^u_/.test(p.subreddit ?? "")) return false;
+    const text = normalizeSearchText(`${p.title} ${p.selftext ?? ""}`);
+    if (!words.every((word) => text.includes(word))) return false;
+    seen.add(p.id);
+    return true;
+  }).sort((a, b) => (b.num_comments ?? 0) + (b.score ?? 0) / 4 - ((a.num_comments ?? 0) + (a.score ?? 0) / 4)).slice(0, 10);
 
-  return Promise.all(posts.map(async (p) => {
+  // Two comment lookups at a time for the six busiest threads keeps under the burst limits.
+  const slots = [Promise.resolve(), Promise.resolve()];
+  return Promise.all(posts.map(async (p, index) => {
     const url = `https://www.reddit.com${p.permalink}`;
-    const params = new URLSearchParams({ link_id: `t3_${p.id}`, limit: "50", sort: "asc" });
-    const result = quick ? null : await fetchJson(upstream, `${REDDIT}/comments/search?${params}`, 5000);
-    const comments = Array.isArray(result?.data) ? result.data : [];
+    let comments = [];
+    let result = null;
+    if (!quick && index < 6 && (p.num_comments ?? 1) > 0) {
+      const slot = index % slots.length;
+      const previous = slots[slot];
+      let release;
+      slots[slot] = new Promise((resolve) => { release = resolve; });
+      await previous;
+      const params = new URLSearchParams({ link_id: `t3_${p.id}`, limit: "50", sort: "asc" });
+      result = await fetchJson(upstream, `${REDDIT}/comments/search?${params}`, 3500);
+      if (!Array.isArray(result?.data)) {
+        result = await fetchJson(upstream, `${PULLPUSH}/comment/?${new URLSearchParams({ link_id: p.id, size: "50", sort: "asc" })}`, 3000);
+      }
+      release();
+      comments = Array.isArray(result?.data) ? result.data : [];
+    }
     return {
       title: p.title.slice(0, 280),
       subreddit: `r/${p.subreddit}`,
@@ -408,6 +547,99 @@ async function searchWiki(upstream, q) {
   return [...pt, ...(pt.length < 2 ? en : en.slice(0, 1))].slice(0, 3);
 }
 
+const SOCIAL_SITES = [
+  ["Instagram", "instagram.com"],
+  ["TikTok", "tiktok.com"],
+  ["Facebook", "facebook.com"],
+  ["Threads", "threads.net"],
+];
+
+async function searchBluesky(upstream, q) {
+  const params = new URLSearchParams({ q: q.replace(/^@/, ""), limit: "12", sort: "top" });
+  const data = await fetchJson(upstream, `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?${params}`, 5000);
+  return (Array.isArray(data?.posts) ? data.posts : []).flatMap((p) => {
+    const text = p?.record?.text;
+    const handle = p?.author?.handle;
+    const rkey = typeof p?.uri === "string" ? p.uri.split("/").pop() : null;
+    if (typeof text !== "string" || !text.trim() || !handle || !rkey) return [];
+    return [{
+      platform: "Bluesky",
+      title: text.replace(/\s+/g, " ").slice(0, 320),
+      author: `@${handle}`,
+      url: `https://bsky.app/profile/${handle}/post/${rkey}`,
+      engagement: (p.likeCount ?? 0) + 2 * (p.repostCount ?? 0) + (p.replyCount ?? 0) + (p.quoteCount ?? 0),
+      publishedAt: p.record.createdAt ?? null,
+    }];
+  });
+}
+
+// Posts from other networks that Google News indexes (captions, reels, videos).
+async function searchSocial(upstream, q, quick) {
+  const subject = `"${q.replace(/^@/, "").replaceAll('"', " ")}"`;
+  const sites = quick ? SOCIAL_SITES.slice(0, 2) : SOCIAL_SITES;
+  const [bluesky, ...lists] = await Promise.all([
+    searchBluesky(upstream, q),
+    ...sites.map(async ([platform, domain]) => {
+      const items = await fetchGNewsRss(upstream, `${subject} site:${domain}`, "pt-BR", "BR", "BR:pt-419", { withSourceUrl: true });
+      return items.filter((item) => (item.sourceUrl ?? "").includes(domain)).slice(0, 5).map((item) => ({
+        platform,
+        title: item.title.replace(new RegExp(`\\s+-\\s+${platform}$`, "i"), "").slice(0, 320),
+        author: null,
+        url: item.url,
+        engagement: null,
+        publishedAt: item.publishedAt,
+      }));
+    }),
+  ]);
+  // Interleave platforms so one network doesn't crowd out the others.
+  const queues = [...lists, bluesky.slice(0, 6)];
+  const mixed = [];
+  for (let round = 0; round < 6; round++) for (const queue of queues) if (queue[round]) mixed.push(queue[round]);
+  const seen = new Set();
+  return mixed.filter((item) => {
+    const key = item.title.toLowerCase().slice(0, 80);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 18);
+}
+
+// Official records for sitting members of Congress (Câmara and Senado open data).
+async function searchOfficial(upstream, q) {
+  const subject = q.replace(/^@/, "").trim();
+  if (subject.length < 4 || /^https?:/i.test(subject)) return [];
+  const words = normalizeSearchText(subject).match(/[a-z0-9]{2,}/g) ?? [];
+  const [camara, senado] = await Promise.all([
+    fetchJson(upstream, `https://dadosabertos.camara.leg.br/api/v2/deputados?${new URLSearchParams({ nome: subject, ordem: "ASC", ordenarPor: "nome" })}`, 5000),
+    fetchJson(upstream, "https://legis.senado.leg.br/dadosabertos/senador/lista/atual.json", 5000),
+  ]);
+  // One-word queries ("Lula") must equal the parliamentary name, not just appear in it.
+  const named = (name) => {
+    const folded = normalizeSearchText(name);
+    return words.length > 1 ? words.every((word) => folded.includes(word)) : folded === normalizeSearchText(subject);
+  };
+  const deputies = (Array.isArray(camara?.dados) ? camara.dados : []).filter((d) => named(d.nome ?? "")).slice(0, 3).map((d) => ({
+    title: `${d.nome} (${d.siglaPartido}-${d.siglaUf})`,
+    source: "Câmara dos Deputados",
+    url: `https://www.camara.leg.br/deputados/${d.id}`,
+    publishedAt: null,
+    extract: `Registro oficial: ${d.nome} é deputado(a) federal em exercício pelo ${d.siglaPartido}, eleito(a) por ${d.siglaUf}.`,
+  }));
+  const senators = (senado?.ListaParlamentarEmExercicio?.Parlamentares?.Parlamentar ?? []).flatMap((entry) => {
+    const s = entry?.IdentificacaoParlamentar;
+    if (!s?.NomeParlamentar) return [];
+    if (!words.length || !(named(s.NomeParlamentar) || (words.length > 1 && named(s.NomeCompletoParlamentar ?? "")))) return [];
+    return [{
+      title: `${s.NomeParlamentar} (${s.SiglaPartidoParlamentar}-${s.UfParlamentar})`,
+      source: "Senado Federal",
+      url: String(s.UrlPaginaParlamentar ?? "").replace(/^http:/, "https:"),
+      publishedAt: null,
+      extract: `Registro oficial: ${s.NomeCompletoParlamentar ?? s.NomeParlamentar} é senador(a) em exercício pelo ${s.SiglaPartidoParlamentar}, representando ${s.UfParlamentar}.`,
+    }];
+  }).slice(0, 2);
+  return [...deputies, ...senators];
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -419,55 +651,65 @@ export default async function handler(req, res) {
 
   const quick = req.query?.quick === "1";
   const deadline = new AbortController();
-  const timer = setTimeout(() => deadline.abort(), quick ? 5_500 : 9_000);
-  let partial = false;
-  async function upstream(url, options) {
+  const timer = setTimeout(() => deadline.abort(), quick ? 6_500 : 11_000);
+  // A source only counts as failed when it errored AND returned nothing, so one slow
+  // optional endpoint (e.g. a retired API) no longer flags the whole search as broken.
+  const errors = new Set();
+  const tracked = (source) => async (url, options) => {
     try {
-      const signal = options?.signal
-        ? AbortSignal.any([options.signal, deadline.signal])
-        : deadline.signal;
+      const signal = options?.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal;
       const response = await fetch(url, { ...options, signal });
-      if (response.status === 429 || response.status >= 500) partial = true;
+      if (response.status === 429 || response.status >= 500) errors.add(source);
       return response;
     } catch (error) {
-      partial = true;
+      errors.add(source);
       throw error;
     }
-  }
+  };
 
-  const mainVideos = searchYouTube(upstream, q, quick);
-  const results = await Promise.allSettled([
-    mainVideos,
-    searchX(upstream, q, quick),
-    searchReddit(upstream, q, quick),
-    searchNews(upstream, q),
-    searchWiki(upstream, q),
-    searchBackground(upstream, q),
-    quick ? [] : searchVideoBackground(upstream, q, mainVideos),
-  ]);
+  const mainVideos = searchYouTube(tracked("youtube"), q, quick);
+  const jobs = {
+    youtube: mainVideos,
+    x: searchX(tracked("x"), q, quick),
+    reddit: searchReddit(tracked("reddit"), q, quick),
+    news: searchNews(tracked("news"), q),
+    wiki: searchWiki(tracked("wiki"), q),
+    social: searchSocial(tracked("social"), q, quick),
+    official: searchOfficial(tracked("official"), q),
+    background: searchBackground(tracked("background"), q),
+    videos: quick ? Promise.resolve([]) : searchVideoBackground(tracked("videos"), q, mainVideos),
+  };
+  const names = Object.keys(jobs);
+  const settled = await Promise.allSettled(Object.values(jobs));
   clearTimeout(timer);
 
-  const [youtube, x, reddit, news, wiki, background, videos] = results.map((result) => {
-    if (result.status === "fulfilled") return result.value;
-    partial = true;
-    return [];
+  const out = {};
+  const failed = [];
+  settled.forEach((result, index) => {
+    const name = names[index];
+    out[name] = result.status === "fulfilled" && Array.isArray(result.value) ? result.value : [];
+    if (out[name].length === 0 && (result.status === "rejected" || errors.has(name))) failed.push(name);
   });
-  partial ||= deadline.signal.aborted;
-  res.setHeader("Cache-Control", partial ? "no-store" : "public, s-maxage=900, stale-while-revalidate=3600");
+  const visible = failed.filter((name) => ["youtube", "x", "reddit", "news", "wiki", "social"].includes(name));
+  const partial = visible.length > 0;
+  res.setHeader("Cache-Control", partial ? "public, s-maxage=60" : "public, s-maxage=900, stale-while-revalidate=3600");
 
   res.status(200).json({
     query: q,
     fetchedAt: new Date().toISOString(),
     partial,
-    youtube,
-    x,
-    reddit,
-    news,
-    wiki,
+    failed: visible,
+    youtube: out.youtube,
+    x: out.x,
+    reddit: out.reddit,
+    news: out.news,
+    wiki: out.wiki,
+    social: out.social,
     background: [
-      ...background.filter((item) => item.extract),
-      ...videos,
-      ...background.filter((item) => !item.extract),
+      ...out.official,
+      ...out.background.filter((item) => item.extract),
+      ...out.videos,
+      ...out.background.filter((item) => !item.extract),
     ],
   });
 }
