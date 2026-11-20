@@ -322,7 +322,7 @@ export type GovContext = {
     summary: string | null;
     summaryUrl: string | null;
   } | null;
-  rise: { election: ElectionItem; opponent: ElectionResultRow | null; winnerRow: ElectionResultRow | null; matched: "candidate" | "legislative" } | null;
+  rise: { election: ElectionItem; opponent: ElectionResultRow | null; winnerRow: ElectionResultRow | null; matched: "candidate" | "legislative"; reelected?: boolean } | null;
   latest: ElectionItem | null;
   strength: { seats: number; total: number; body: string; date: string; label: string } | null;
   affiliated: import("@/lib/db/schema").ContextPerson[];
@@ -352,11 +352,15 @@ export const getGovernmentContext = unstable_cache(
     let rise: GovContext["rise"] = null;
     // Only elections up to the start of the mandate (plus a little slack for inaugurations).
     const sinceLimit = g.since ? new Date(new Date(g.since).getTime() + 7 * 864e5).toISOString().slice(0, 10) : null;
-    for (const e of elections.filter((x) => !sinceLimit || x.date <= sinceLimit)) {
+    for (const e of elections) {
       const i = surname ? e.results.findIndex((r) => r.candidate && fold(r.candidate).includes(surname)) : -1;
-      if (i >= 0 && i <= 1) {
+      if (i < 0) continue;
+      // A completed election after the mandate began that the leader won is a re-election
+      // (e.g. Lula in 2026, whose new term starts later): show it instead of the old one.
+      const after = sinceLimit != null && e.date > sinceLimit;
+      if (after ? i === 0 && e.status !== "ongoing" : i <= 1) {
         const others = e.results.filter((_, k) => k !== i);
-        rise = { election: e, winnerRow: e.results[i], opponent: others[0] ?? null, matched: "candidate" };
+        rise = { election: e, winnerRow: e.results[i], opponent: others[0] ?? null, matched: "candidate", reelected: after };
         break;
       }
     }
@@ -368,17 +372,25 @@ export const getGovernmentContext = unstable_cache(
         rise = { election: leg, winnerRow: mine ?? null, opponent: rival ?? null, matched: "legislative" };
       }
     }
-    // Current strength: ruling party's share of seats in the latest legislative result.
-    const lastLeg = elections.find((e) => e.kind === "legislative" && e.results.some((r) => r.seats != null));
+    // Current strength: ruling party's share of seats in the latest legislative result,
+    // the lower chamber first (a Senate renewed the same day is not the governing majority).
+    const UPPER = /senat|senado|upper|council of states|house of lords|bundesrat|house of councillors|rajya/i;
+    const legs = elections.filter((e) => e.kind === "legislative" && e.results.some((r) => r.seats != null));
+    const ordered = [...legs.filter((e) => !UPPER.test(e.body)), ...legs.filter((e) => UPPER.test(e.body))];
     let strength: GovContext["strength"] = null;
-    if (lastLeg && g.party_name) {
+    if (g.party_name) {
       const key = fold(g.party_name).split(" (")[0];
-      // Party Facts id first (also covers federations/alliances mapped to the lead party), then the name.
-      const mine =
-        (g.party_pf ? lastLeg.results.find((r) => r.partyfactsId === g.party_pf) : undefined) ??
-        lastLeg.results.find((r) => fold(r.party).includes(key) || key.includes(fold(r.party)));
-      const total = lastLeg.totalSeats ?? lastLeg.results.reduce((a, r) => a + (r.seats ?? 0), 0);
-      if (mine?.seats != null && total) strength = { seats: mine.seats, total, body: lastLeg.body, date: lastLeg.date, label: mine.party };
+      for (const leg of ordered) {
+        // Party Facts id first (also covers federations/alliances mapped to the lead party), then the name.
+        const mine =
+          (g.party_pf ? leg.results.find((r) => r.partyfactsId === g.party_pf) : undefined) ??
+          leg.results.find((r) => fold(r.party).includes(key) || key.includes(fold(r.party)));
+        const total = leg.totalSeats ?? leg.results.reduce((a, r) => a + (r.seats ?? 0), 0);
+        if (mine?.seats != null && total) {
+          strength = { seats: mine.seats, total, body: leg.body, date: leg.date, label: mine.party.replace(/\s*\([^)]*\)$/, "") };
+          break;
+        }
+      }
     }
     const ideologyQids = ctx?.party?.ideologies.map((i) => i.qid) ?? [];
     const tradition = ideologyQids.length
@@ -410,7 +422,8 @@ export const getGovernmentContext = unstable_cache(
         : null,
       party: ctx?.party ?? (g.party_name && g.party_qid ? { qid: g.party_qid, name: g.party_name, founded: null, founders: [], chair: null, alignment: [], ideologies: [], summary: null, summaryUrl: null } : null),
       rise,
-      latest: elections[0] ?? null,
+      // Most recent election day; on a shared date the presidential vote, then the lower chamber.
+      latest: [...elections].sort((a, b) => b.date.localeCompare(a.date) || Number(b.kind === "presidential") - Number(a.kind === "presidential") || Number(UPPER.test(a.body)) - Number(UPPER.test(b.body)))[0] ?? null,
       strength,
       affiliated: ctx?.affiliated ?? [],
       sharedIdeology: ctx?.shared_ideology ?? [],

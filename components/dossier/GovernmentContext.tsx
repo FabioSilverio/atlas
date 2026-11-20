@@ -114,7 +114,8 @@ export async function GovernmentContext({ code }: { code: string }) {
           <p className="text-[12.5px] leading-relaxed text-ink-2">
             {rise.matched === "candidate" ? (
               <>
-                {rise.election.kind === "presidential" ? "Eleição presidencial" : bodyPt(rise.election.body)} de {fmtDate(rise.election.date)}:{" "}
+                {rise.reelected ? "Reeleito na " : ""}
+                {rise.election.kind === "presidential" ? (rise.reelected ? "eleição presidencial" : "Eleição presidencial") : bodyPt(rise.election.body)} de {fmtDate(rise.election.date)}:{" "}
                 <span className="text-ink">{rise.winnerRow?.candidate ?? leader?.name}</span>
                 {rise.winnerRow?.share != null && ` (${rise.winnerRow.share.toFixed(1)}%${rise.election.status === "ongoing" ? ", 1º turno" : ""})`}
                 {rise.opponent && (
@@ -122,7 +123,7 @@ export async function GovernmentContext({ code }: { code: string }) {
                     {" "}
                     contra <span className="text-ink">{rise.opponent.candidate ?? rise.opponent.party}</span>
                     {rise.opponent.share != null && ` (${rise.opponent.share.toFixed(1)}%)`}
-                    {rise.opponent.party && rise.opponent.candidate && <span className="text-muted">, {rise.opponent.party}</span>}
+                    {rise.opponent.party && rise.opponent.candidate && <span className="text-muted">, {rise.opponent.party.replace(/\s*\([^)]*\)$/, "")}</span>}
                   </>
                 )}
                 .
