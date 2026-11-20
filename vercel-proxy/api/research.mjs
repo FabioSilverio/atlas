@@ -306,24 +306,42 @@ function hydrateX(p, conversation) {
 
 const PULLPUSH = "https://api.pullpush.io/reddit/search";
 
-async function searchReddit(upstream, q, quick = false) {
+async function searchReddit(upstream, q, quick = false, extraUpstream = upstream) {
   const cutoff = Date.now() - 90 * DAY_MS;
   const subject = q.replace(/^@/, "").replaceAll('"', " ").trim();
   // Arctic Shift times out on wide title scans, so keep its window short and the
   // subreddit list small; PullPush covers every other subreddit with full-text search.
   const recentAfter = new Date(Date.now() - 30 * DAY_MS).toISOString().slice(0, 10);
-  const arcticSubs = quick ? ["brasil", "brasilivre"] : ["brasil", "brasilivre", "politics", "worldnews"];
-  const [arctic, pullpush] = await Promise.all([
-    // Arctic Shift rate-limits bursts, so query its subreddits one after another.
+  const latestAfter = new Date(Date.now() - 7 * DAY_MS).toISOString().slice(0, 10);
+  const scanSubs = quick
+    ? ["brasil", "brasilivre", "BrasildoB"]
+    : ["brasil", "brasilivre", "BrasildoB", "NoticiasBR", "politics", "worldnews"];
+  const titleSubs = quick ? [] : ["brasil"];
+  const [scan, arctic, pullpush] = await Promise.all([
+    // Listing a subreddit's newest posts is cheap and reliable on Arctic Shift (its title
+    // search often times out), so pull the latest week two subreddits at a time and match locally.
     (async () => {
       const lists = [];
-      for (const subreddit of arcticSubs) {
+      for (let i = 0; i < scanSubs.length; i += 2) {
+        const batch = await Promise.all(scanSubs.slice(i, i + 2).map((subreddit) => {
+          const params = new URLSearchParams({ subreddit, after: latestAfter, limit: "100", sort: "desc" });
+          return fetchJson(upstream, `${REDDIT}/posts/search?${params}`, 4000, 1);
+        }));
+        for (const result of batch) if (Array.isArray(result?.data)) lists.push(result.data);
+      }
+      return lists;
+    })(),
+    // Title search reaches back 30 days when Arctic Shift has capacity; best effort only.
+    (async () => {
+      const lists = [];
+      for (const subreddit of titleSubs) {
         const params = new URLSearchParams({ subreddit, title: subject, after: recentAfter, limit: "8", sort: "desc" });
-        const result = await fetchJson(upstream, `${REDDIT}/posts/search?${params}`, 4000, 1);
+        const result = await fetchJson(extraUpstream, `${REDDIT}/posts/search?${params}`, 3500);
         if (Array.isArray(result?.data)) lists.push(result.data);
       }
       return lists;
     })(),
+    // PullPush blocks most cloud IPs but answers from some regions; best effort only.
     (async () => {
       const params = new URLSearchParams({
         q: subject.includes(" ") ? `"${subject}"` : subject,
@@ -332,14 +350,14 @@ async function searchReddit(upstream, q, quick = false) {
         sort_type: "created_utc",
         after: String(Math.floor(cutoff / 1000)),
       });
-      const result = await fetchJson(upstream, `${PULLPUSH}/submission/?${params}`, 5000, 1);
+      const result = await fetchJson(extraUpstream, `${PULLPUSH}/submission/?${params}`, 4000);
       return Array.isArray(result?.data) ? result.data : [];
     })(),
   ]);
 
   const words = normalizeSearchText(subject).match(/[a-z0-9]{3,}/g) ?? [];
   const seen = new Set();
-  const posts = [...arctic.flat(), ...pullpush].filter((p) => {
+  const posts = [...arctic.flat(), ...scan.flat(), ...pullpush].filter((p) => {
     if (typeof p?.title !== "string" || typeof p.permalink !== "string" || !p.permalink.startsWith("/r/") || !/^[a-z0-9]+$/.test(p.id)) return false;
     if (p.removed_by_category || p.over_18 || seen.has(p.id) || p.created_utc * 1000 < cutoff) return false;
     if (/^u_/.test(p.subreddit ?? "")) return false;
@@ -655,14 +673,18 @@ export default async function handler(req, res) {
   // A source only counts as failed when it errored AND returned nothing, so one slow
   // optional endpoint (e.g. a retired API) no longer flags the whole search as broken.
   const errors = new Set();
+  const diag = [];
   const tracked = (source) => async (url, options) => {
+    const host = new URL(url).host;
     try {
       const signal = options?.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal;
       const response = await fetch(url, { ...options, signal });
       if (response.status === 429 || response.status >= 500) errors.add(source);
+      if (!response.ok) diag.push(`${source} ${host} ${response.status}`);
       return response;
     } catch (error) {
       errors.add(source);
+      diag.push(`${source} ${host} ${error?.name ?? "error"}`);
       throw error;
     }
   };
@@ -671,7 +693,7 @@ export default async function handler(req, res) {
   const jobs = {
     youtube: mainVideos,
     x: searchX(tracked("x"), q, quick),
-    reddit: searchReddit(tracked("reddit"), q, quick),
+    reddit: searchReddit(tracked("reddit"), q, quick, tracked("reddit-extra")),
     news: searchNews(tracked("news"), q),
     wiki: searchWiki(tracked("wiki"), q),
     social: searchSocial(tracked("social"), q, quick),
@@ -699,6 +721,7 @@ export default async function handler(req, res) {
     fetchedAt: new Date().toISOString(),
     partial,
     failed: visible,
+    ...(req.query?.debug === "1" ? { diag: diag.slice(0, 60) } : {}),
     youtube: out.youtube,
     x: out.x,
     reddit: out.reddit,
