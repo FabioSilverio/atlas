@@ -127,7 +127,7 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
               onClick={() => {
                 setOpen(false);
                 input.current?.blur();
-                router.push(`/busca?q=${encodeURIComponent(q.trim())}&ia=1`);
+                router.push(`/busca?q=${encodeURIComponent(q.trim())}`);
               }}
               className="w-full border-t border-line bg-panel-2 px-3 py-2 text-left font-mono text-[11.5px] text-cyan hover:bg-panel-3"
             >

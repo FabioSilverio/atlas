@@ -114,9 +114,9 @@ type LiveApiResponse = {
   wiki?: WikiSnippet[];
 };
 
-async function fetchLiveWeb(query: string): Promise<LiveApiResponse | null> {
+async function fetchLiveWeb(query: string, quick: boolean): Promise<LiveApiResponse | null> {
   try {
-    const r = await fetch(`/api/research?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(20_000) });
+    const r = await fetch(`/api/research?q=${encodeURIComponent(query)}${quick ? "&quick=1" : ""}`, { signal: AbortSignal.timeout(20_000) });
     if (!r.ok) return null;
     return (await r.json()) as LiveApiResponse;
   } catch {
@@ -161,13 +161,13 @@ function ytId(url: string): string | null {
  * Gathers live evidence from the internet (/api/research scraping YouTube, X, Reddit, News, Wikipedia)
  * combined with ATLAS's own monitored signals (/data/recent.json) and database index.
  */
-export async function gatherDossierEvidence(query: string, atlasHits: Hit[]): Promise<DossierEvidence> {
+export async function gatherDossierEvidence(query: string, atlasHits: Hit[], quick = false): Promise<DossierEvidence> {
   const words = fold(query)
     .split(" ")
     .filter((w) => w.length >= 2)
     .slice(0, 6);
 
-  const [live, allRecent] = await Promise.all([fetchLiveWeb(query), loadRecentSignals()]);
+  const [live, allRecent] = await Promise.all([fetchLiveWeb(query, quick), quick ? Promise.resolve([]) : loadRecentSignals()]);
 
   const matchedRecent = words.length
     ? allRecent.filter((s) => {
@@ -214,7 +214,7 @@ export async function gatherDossierEvidence(query: string, atlasHits: Hit[]): Pr
   }
 
   let wiki = live?.wiki ?? [];
-  if (!wiki.length && !live) {
+  if (!wiki.length && !live && !quick) {
     const [pt, en] = await Promise.all([fetchWikiDirect("pt", query), fetchWikiDirect("en", query)]);
     wiki = [...pt, ...(pt.length < 2 ? en : en.slice(0, 1))].slice(0, 3);
   }

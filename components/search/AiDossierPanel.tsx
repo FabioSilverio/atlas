@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Hit } from "@/lib/search-client";
 import {
   gatherDossierEvidence,
-  hasWebGPU,
   streamOllamaDossier,
   streamWebGPUDossier,
   WEBGPU_MODELS,
@@ -19,7 +18,7 @@ const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFra
  * Scrapes YouTube, X, Reddit, Google News and Wikipedia for any query via /api/research,
  * merges with ATLAS's own data, and synthesizes a dossier using local AI (WebGPU Qwen 2.5 or Ollama).
  */
-export function AiDossierPanel({ query, hits, autoStart = false }: { query: string; hits: Hit[]; autoStart?: boolean }) {
+export function AiDossierPanel({ query, hits, quick = false }: { query: string; hits: Hit[]; quick?: boolean }) {
   const [mode, setMode] = useState<LocalEngineMode>("webgpu");
   const [webModel, setWebModel] = useState<string>(WEBGPU_MODELS[0].id);
   const [ollamaUrl, setOllamaUrl] = useState("http://127.0.0.1:11434");
@@ -33,85 +32,80 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
   const [copied, setCopied] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
-  const autoRanRef = useRef(false);
+  const [expanded, setExpanded] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [updating, setUpdating] = useState(false);
+  const [researchError, setResearchError] = useState(false);
 
-  const generate = useCallback(
-    async (evOverride?: DossierEvidence) => {
-      const ev = evOverride ?? evidence;
-      if (!ev) return;
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      setOutput("");
-      setError(null);
-      setStatus(mode === "webgpu" ? "loading_model" : "generating");
-      setProgress(mode === "webgpu" ? { pct: 0, text: "Iniciando IA local…" } : null);
-      try {
-        if (mode === "webgpu") {
-          await streamWebGPUDossier({
-            modelId: webModel,
-            evidence: ev,
-            onProgress: (pct, text) => {
-              setProgress({ pct, text });
-              if (pct >= 0.99) setStatus("generating");
-            },
-            onToken: (chunk) => {
-              setStatus("generating");
-              setProgress(null);
-              setOutput((prev) => prev + chunk);
-            },
-            signal: ctrl.signal,
-          });
-        } else {
-          await streamOllamaDossier({
-            baseUrl: ollamaUrl,
-            model: ollamaModel,
-            evidence: ev,
-            onToken: (chunk) => setOutput((prev) => prev + chunk),
-            signal: ctrl.signal,
-          });
-        }
+  async function generate() {
+      if (quick || !evidence) return;
+    const ev = { ...evidence, atlasHits: hits.slice(0, 16) };
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setOutput("");
+    setError(null);
+    setStatus(mode === "webgpu" ? "loading_model" : "generating");
+    setProgress(mode === "webgpu" ? { pct: 0, text: "Iniciando IA local…" } : null);
+    try {
+      if (mode === "webgpu") {
+        await streamWebGPUDossier({
+          modelId: webModel,
+          evidence: ev,
+          onProgress: (pct, text) => {
+            setProgress({ pct, text });
+            if (pct >= 0.99) setStatus("generating");
+          },
+          onToken: (chunk) => {
+            setStatus("generating");
+            setProgress(null);
+            setOutput((prev) => prev + chunk);
+          },
+          signal: ctrl.signal,
+        });
+      } else {
+        await streamOllamaDossier({
+          baseUrl: ollamaUrl,
+          model: ollamaModel,
+          evidence: ev,
+          onToken: (chunk) => setOutput((prev) => prev + chunk),
+          signal: ctrl.signal,
+        });
+      }
+      setStatus("done");
+    } catch (err) {
+      if (ctrl.signal.aborted) {
         setStatus("done");
-      } catch (err) {
-        if (ctrl.signal.aborted) {
-          setStatus("done");
-          return;
-        }
-        setStatus("error");
-        setError((err as Error).message || "Falha ao executar a IA local.");
+        return;
       }
-    },
-    [evidence, mode, webModel, ollamaUrl, ollamaModel],
-  );
-
-  const generateRef = useRef(generate);
-  useEffect(() => {
-    generateRef.current = generate;
-  }, [generate]);
+      setStatus("error");
+      setError((err as Error).message || "Falha ao executar a IA local.");
+    }
+  }
 
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) return;
     let alive = true;
-    gatherDossierEvidence(q, hits).then((ev) => {
+    gatherDossierEvidence(query, [], quick && !expanded).then((ev) => {
       if (!alive) return;
-      setEvidence(ev);
-      if (autoStart && !autoRanRef.current && hasWebGPU()) {
-        autoRanRef.current = true;
-        void generateRef.current(ev);
-      }
+      if (ev.liveOk || !expanded) setEvidence(ev);
+      setResearchError(!ev.liveOk);
+      setUpdating(false);
+    }).catch(() => {
+      if (!alive) return;
+      setResearchError(true);
+      setUpdating(false);
     });
     return () => {
       alive = false;
       abortRef.current?.abort();
     };
-  }, [query, hits, autoStart]);
+  }, [query, quick, expanded, retry]);
 
   if (query.trim().length < 2) return null;
 
-  const loadingEv = evidence === null;
+  const loadingEv = evidence === null && !researchError;
   const busy = status === "loading_model" || status === "generating";
-  const totalLive = evidence ? evidence.youtube.length + evidence.x.length + evidence.reddit.length + evidence.news.length + evidence.wiki.length : 0;
+  const totalLive = evidence ? evidence.youtube.length + evidence.x.length + evidence.reddit.length + evidence.news.length + evidence.wiki.length + evidence.background.length : 0;
 
   const copyMd = async () => {
     if (!output) return;
@@ -127,7 +121,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
         <div className="min-w-0">
           <div className="label flex items-center gap-1.5 text-cyan">
-            <span className={`inline-block size-2 rounded-full bg-cyan ${loadingEv || busy ? "live-dot" : ""}`} /> Pesquisa ao vivo na internet + Dossiê IA local
+            <span className={`inline-block size-2 rounded-full bg-cyan ${loadingEv || busy ? "live-dot" : ""}`} /> {quick ? "Pesquisa rápida" : "Pesquisa ao vivo"}
           </div>
           <h2 className="mt-1 text-[22px] font-medium text-ink">“{query}”</h2>
           <p className="mt-1 text-[13px] text-muted">
@@ -139,7 +133,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {!quick && <div className="flex flex-wrap items-center gap-2">
           <div className="flex border border-line-strong bg-bg font-mono text-[11.5px]">
             <button
               type="button"
@@ -175,11 +169,11 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
               ■ parar
             </button>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Engine settings */}
-      <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[11.5px] text-muted">
+      {!quick && <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[11.5px] text-muted">
         {mode === "webgpu" ? (
           <>
             <label className="flex items-center gap-2">
@@ -222,7 +216,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
             <span>Inicie com OLLAMA_ORIGINS=*</span>
           </>
         )}
-      </div>
+      </div>}
 
       {/* Model download / load progress */}
       {progress && status === "loading_model" && (
@@ -252,6 +246,40 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
           <p className="mt-4 border-t border-line pt-2.5 font-mono text-[11px] text-muted">
             Síntese gerada localmente ({mode === "webgpu" ? webModel : `Ollama ${ollamaModel}`}) a partir da coleta ao vivo abaixo. Confira os links antes de citar.
           </p>
+        </div>
+      )}
+
+      {(researchError || (evidence && totalLive === 0)) && (
+        <p role="status" className="mt-4 text-sm text-muted">
+          {researchError ? "A pesquisa ao vivo está indisponível agora." : "Nenhuma fonte encontrada para este termo."}
+          {researchError && <button type="button" className="ml-2 min-h-11 text-cyan"
+            onClick={() => { setResearchError(false); setUpdating(Boolean(evidence)); setRetry((n) => n + 1); }}>
+            Tentar novamente
+          </button>}
+        </p>
+      )}
+
+      {quick && !expanded && !loadingEv && (
+        <button type="button" className="mt-4 min-h-11 border border-line px-3 text-sm text-cyan"
+          onClick={() => { setUpdating(true); setResearchError(false); setExpanded(true); }}>
+          Aprofundar pesquisa
+        </button>
+      )}
+
+      {updating && <p role="status" className="mt-3 text-sm text-muted">Carregando mais fontes…</p>}
+
+      {evidence && evidence.background.length > 0 && (
+        <div className="mt-5">
+          <h3 className="label mb-2">Fontes de contexto</h3>
+          <ul className="grid gap-2 md:grid-cols-2">
+            {evidence.background.slice(0, 6).map((source) => (
+              <li key={source.url} className="min-w-0 border border-line bg-panel-2 p-3 text-sm">
+                <a href={source.url} target="_blank" rel="noreferrer" className="font-medium text-cyan">{source.title}</a>
+                <div className="mt-1 text-xs text-muted">{source.source ?? "Web"}</div>
+                {source.extract && <p className="mt-2 break-words text-ink-2">{source.extract}</p>}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -286,7 +314,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
           {/* YouTube */}
           {evidence.youtube.length > 0 && (
             <div>
-              <div className="label mb-2">YouTube — vídeos mais vistos e relevantes ({evidence.youtube.length})</div>
+              <div className="label mb-2">YouTube — vídeos relevantes ({evidence.youtube.length})</div>
               <ul className="grid gap-3 md:grid-cols-2">
                 {evidence.youtube.slice(0, 12).map((v) => (
                   <li key={v.id} className="border border-line bg-panel-2 p-2.5">
@@ -328,6 +356,18 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
                       <a href={p.url} target="_blank" rel="noreferrer" className="mt-1 line-clamp-3 block text-[13.5px] leading-snug text-ink hover:text-cyan">
                         {p.title}
                       </a>
+                      {Boolean(p.context?.length || (p.body && p.body !== p.title)) && (
+                        <details className="mt-2 break-words text-xs text-muted">
+                          <summary className="cursor-pointer py-2 text-cyan">Ver contexto</summary>
+                          {p.body && <p className="mb-2 whitespace-pre-line">{p.body}</p>}
+                          {p.context?.slice(0, 10).map((item) => (
+                            <p className="mb-2" key={item.url}>
+                              <a href={item.url} target="_blank" rel="noreferrer" className="text-cyan">{item.label}</a> {item.text}
+                            </p>
+                          ))}
+                          {(p.contextPartial || (p.context?.length ?? 0) > 10) && <p>Contexto parcial.</p>}
+                        </details>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -347,6 +387,18 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
                       <a href={r.url} target="_blank" rel="noreferrer" className="mt-1 line-clamp-2 block text-[13.5px] leading-snug text-ink hover:text-cyan">
                         {r.title}
                       </a>
+                      {Boolean(r.context?.length || (r.body && r.body !== r.title)) && (
+                        <details className="mt-2 break-words text-xs text-muted">
+                          <summary className="cursor-pointer py-2 text-cyan">Ver contexto</summary>
+                          {r.body && <p className="mb-2 whitespace-pre-line">{r.body}</p>}
+                          {r.context?.slice(0, 10).map((item) => (
+                            <p className="mb-2" key={item.url}>
+                              <a href={item.url} target="_blank" rel="noreferrer" className="text-cyan">{item.label}</a> {item.text}
+                            </p>
+                          ))}
+                          {(r.contextPartial || (r.context?.length ?? 0) > 10) && <p>Contexto parcial.</p>}
+                        </details>
+                      )}
                     </li>
                   ))}
                 </ul>

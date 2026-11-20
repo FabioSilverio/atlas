@@ -172,7 +172,7 @@ function xPost(p) {
   };
 }
 
-async function searchX(q) {
+async function searchX(q, quick = false) {
   const handle = /^@[a-z0-9_]{2,25}$/i.test(q) ? q.slice(1) : null;
   const search = handle ? `from:${handle} OR @${handle}` : `"${q.replaceAll('"', " ")}"`;
   const directId = q.match(/^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(?:[a-z0-9_]+|i\/web)\/status\/(\d{2,20})(?:[/?#]|$)/i)?.[1];
@@ -187,7 +187,7 @@ async function searchX(q) {
 
   return Promise.all(matches.map(async (p) => {
     const post = xPost(p);
-    const conversation = direct ?? await fetchJson(`${FX}/conversation/${p.id}`, 5000);
+    const conversation = direct ?? (quick ? null : await fetchJson(`${FX}/conversation/${p.id}`, 5000));
     const main = conversation?.status ?? p;
     const used = new Set([p.id]);
     const context = [
@@ -209,7 +209,7 @@ async function searchX(q) {
   }));
 }
 
-async function searchReddit(q) {
+async function searchReddit(q, quick = false) {
   const subs = ["brasil", "brasilivre", "politics", "worldnews", "argentina", "portugal"];
   const cutoff = Date.now() - 90 * DAY_MS;
   const after = new Date(cutoff).toISOString().slice(0, 10);
@@ -227,7 +227,7 @@ async function searchReddit(q) {
   return Promise.all(posts.map(async (p) => {
     const url = `https://www.reddit.com${p.permalink}`;
     const params = new URLSearchParams({ link_id: `t3_${p.id}`, limit: "50", sort: "asc" });
-    const result = await fetchJson(`${REDDIT}/comments/search?${params}`, 5000);
+    const result = quick ? null : await fetchJson(`${REDDIT}/comments/search?${params}`, 5000);
     const comments = result?.data ?? [];
     return {
       title: p.title.slice(0, 280),
@@ -417,15 +417,16 @@ export default async function handler(req, res) {
     return;
   }
 
-  const mainVideos = searchYouTube(q);
+  const quick = req.query?.quick === "1";
+  const mainVideos = searchYouTube(q, quick);
   const [youtube, x, reddit, news, wiki, background, videos] = await Promise.all([
     mainVideos,
-    searchX(q),
-    searchReddit(q),
+    searchX(q, quick),
+    searchReddit(q, quick),
     searchNews(q),
     searchWiki(q),
     searchBackground(q),
-    searchVideoBackground(q, mainVideos),
+    quick ? [] : searchVideoBackground(q, mainVideos),
   ]);
 
   res.status(200).json({

@@ -7,6 +7,7 @@ import { AiDossierPanel } from "@/components/search/AiDossierPanel";
 import { KIND_LABEL } from "@/lib/ui/labels";
 import { searchLocal, type Hit } from "@/lib/search-client";
 
+const EMPTY_HITS: Hit[] = [];
 const EXAMPLES = ["Lula", "Flávio Bolsonaro", "Javier Milei", "STF", "Donald Trump", "Peter Thiel", "populismo"];
 
 /** Global search over the static index + on-demand local AI dossier, in the browser. */
@@ -14,22 +15,27 @@ export function SearchResults() {
   const router = useRouter();
   const params = useSearchParams();
   const q = params.get("q") ?? "";
-  const autoStart = params.get("ia") === "1";
+  const [compactSearch, setCompactSearch] = useState<boolean | null>(null);
+  useEffect(() => {
+    setCompactSearch(matchMedia("(pointer: coarse)").matches);
+  }, []);
+  const [searchArchive, setSearchArchive] = useState(false);
   const [result, setResult] = useState<{ q: string; hits: Hit[] } | null>(null);
   useEffect(() => {
+    if (compactSearch === null || (compactSearch && !searchArchive)) return;
     let alive = true;
     if (q.trim().length >= 2) searchLocal(q, 80).then((hits) => alive && setResult({ q, hits }));
     return () => {
       alive = false;
     };
-  }, [q]);
-  const hits = q.trim().length < 2 ? [] : result?.q === q ? result.hits : null;
+  }, [q, compactSearch, searchArchive]);
+  const hits = q.trim().length < 2 || (compactSearch && !searchArchive) ? [] : result?.q === q ? result.hits : null;
   const groups = new Map<string, Hit[]>();
   for (const h of hits ?? []) groups.set(h.kind, [...(groups.get(h.kind) ?? []), h]);
 
   return (
     <>
-      <div className="label">Busca global e dossiê com IA local</div>
+      <div className="label">Busca global</div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -42,9 +48,8 @@ export function SearchResults() {
           key={q}
           name="q"
           defaultValue={q}
-          autoFocus
           placeholder="Digite uma pessoa, termo, partido ou assunto para pesquisar e gerar dossiê…"
-          className="h-11 min-w-0 flex-1 border border-line-strong bg-bg px-3.5 font-mono text-[14.5px] text-ink placeholder:text-muted focus:border-cyan-dim focus:outline-none"
+          className="h-11 min-w-0 flex-1 border border-line-strong bg-bg px-3.5 font-mono text-base text-ink placeholder:text-muted focus:border-cyan-dim focus:outline-none"
         />
         <button className="h-11 border border-cyan-dim px-5 font-mono text-[12.5px] text-cyan hover:bg-panel-3">buscar</button>
       </form>
@@ -57,10 +62,13 @@ export function SearchResults() {
         ))}
       </p>
 
-      {q.trim().length >= 2 && <AiDossierPanel key={q.trim()} query={q.trim()} hits={hits ?? []} autoStart={autoStart} />}
+      {q.trim().length >= 2 && compactSearch !== null && <AiDossierPanel key={q.trim()} query={q.trim()} hits={hits ?? EMPTY_HITS} quick={compactSearch === true} />}
 
+      {q.trim().length >= 2 && compactSearch && !searchArchive && (
+        <button type="button" onClick={() => setSearchArchive(true)} className="mt-4 min-h-11 border border-line px-3 text-sm text-cyan">Buscar também no acervo</button>
+      )}
       {q && hits === null && <p className="mt-8 font-mono text-[12px] text-muted">buscando no índice do ATLAS…</p>}
-      {q && hits?.length === 0 && <p className="mt-8 text-[14px] text-muted">Nenhum registro fixo no índice do ATLAS para “{q}” — você ainda pode gerar o dossiê com IA acima usando Wikipédia e o monitor ao vivo.</p>}
+      {q && (compactSearch === false || searchArchive) && hits?.length === 0 && <p className="mt-8 text-[14px] text-muted">Nenhum registro fixo no índice do ATLAS para “{q}” — você ainda pode gerar o dossiê com IA acima usando Wikipédia e o monitor ao vivo.</p>}
       <div className="mt-6 grid gap-8 md:grid-cols-2">
         {[...groups].map(([kind, list]) => (
           <section key={kind}>
