@@ -336,7 +336,7 @@ export const scoresJob: Job = {
     // Editorial estimates (data/seed/overrides/estimates.json), attached to the current chief
     // executive only while the entry still applies: same regime type, or the same person.
     const chiefsNow = (await db.execute(sql`
-      select c.code, c.regime_type as regime, pe.id as person_id, pe.name, pe.name_en
+      select c.code, c.regime_type as regime, pe.id as person_id, pe.name, pe.name_native as name_en
       from governments g
       join countries c on c.code = g.country_code
       join people pe on pe.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end

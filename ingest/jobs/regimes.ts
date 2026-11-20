@@ -17,8 +17,10 @@ export const regimesJob: Job = {
     for (const r of rows) {
       if (!r.Code || r.Code.startsWith("OWID")) continue;
       const year = Number(r.Year);
-      const value = Number(r["Political regime"]);
-      if (!Number.isFinite(value)) continue;
+      // OWID used to publish the RoW code (0–3) and now publishes its label ("Closed autocracy").
+      const raw = (r["Political regime"] ?? "").trim();
+      const value = /^\d$/.test(raw) ? Number(raw) : LABELS.indexOf(raw.toLowerCase().replace(/\s+/g, "_"));
+      if (!(value >= 0 && value < LABELS.length)) continue;
       const prev = latest.get(r.Code);
       if (!prev || year > prev.year) latest.set(r.Code, { year, value });
     }
