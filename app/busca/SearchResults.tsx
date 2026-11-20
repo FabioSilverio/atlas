@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AiDossierPanel } from "@/components/search/AiDossierPanel";
 import { KIND_LABEL } from "@/lib/ui/labels";
 import { searchLocal, type Hit } from "@/lib/search-client";
@@ -10,15 +10,28 @@ import { searchLocal, type Hit } from "@/lib/search-client";
 const EMPTY_HITS: Hit[] = [];
 const EXAMPLES = ["Lula", "Flávio Bolsonaro", "Javier Milei", "STF", "Donald Trump", "Peter Thiel", "populismo"];
 
+const TOUCH_POINTER = "(pointer: coarse)";
+
+function subscribeToPointer(onChange: () => void) {
+  const pointer = window.matchMedia(TOUCH_POINTER);
+  pointer.addEventListener("change", onChange);
+  return () => pointer.removeEventListener("change", onChange);
+}
+
+function readTouchPointer() {
+  return window.matchMedia(TOUCH_POINTER).matches;
+}
+
+function readServerPointer() {
+  return null;
+}
+
 /** Global search over the static index + on-demand local AI dossier, in the browser. */
 export function SearchResults() {
   const router = useRouter();
   const params = useSearchParams();
   const q = params.get("q") ?? "";
-  const [compactSearch, setCompactSearch] = useState<boolean | null>(null);
-  useEffect(() => {
-    setCompactSearch(matchMedia("(pointer: coarse)").matches);
-  }, []);
+  const compactSearch = useSyncExternalStore(subscribeToPointer, readTouchPointer, readServerPointer);
   const [searchArchive, setSearchArchive] = useState(false);
   const [result, setResult] = useState<{ q: string; hits: Hit[] } | null>(null);
   useEffect(() => {
@@ -62,7 +75,7 @@ export function SearchResults() {
         ))}
       </p>
 
-      {q.trim().length >= 2 && compactSearch !== null && <AiDossierPanel key={q.trim()} query={q.trim()} hits={hits ?? EMPTY_HITS} quick={compactSearch === true} />}
+      {q.trim().length >= 2 && compactSearch !== null && <AiDossierPanel key={`${q.trim()}:${compactSearch}`} query={q.trim()} hits={hits ?? EMPTY_HITS} quick={compactSearch === true} />}
 
       {q.trim().length >= 2 && compactSearch && !searchArchive && (
         <button type="button" onClick={() => setSearchArchive(true)} className="mt-4 min-h-11 border border-line px-3 text-sm text-cyan">Buscar também no acervo</button>
