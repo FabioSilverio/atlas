@@ -99,7 +99,7 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
             if (e.key === "Enter") pick(results[active]);
             if (e.key === "Escape") input.current?.blur();
           }}
-          placeholder="Buscar país, pessoa, pensador, ideologia, tema"
+          placeholder="Buscar país, pessoa, termo ou gerar dossiê IA"
           aria-label="Busca global"
           className="h-8 w-full border border-line-strong bg-bg px-3 pr-8 font-mono text-[12.5px] text-ink placeholder:text-muted focus:border-cyan-dim focus:outline-none"
         />
@@ -107,7 +107,7 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
         {open && q && (
           <div className="absolute left-0 right-0 top-9 border border-line-strong bg-panel shadow-2xl">
             {results.length === 0 ? (
-              <div className="px-3 py-2 font-mono text-[11.5px] text-muted">Nada encontrado.</div>
+              <div className="px-3 py-2 font-mono text-[11.5px] text-muted">Nada encontrado no índice fixo.</div>
             ) : (
               results.map((h, i) => (
                 <button
@@ -122,7 +122,18 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
                 </button>
               ))
             )}
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => pick(undefined)} className="w-full border-t border-line px-3 py-1.5 text-left font-mono text-[11px] text-cyan">
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                input.current?.blur();
+                router.push(`/busca?q=${encodeURIComponent(q.trim())}&ia=1`);
+              }}
+              className="w-full border-t border-line bg-panel-2 px-3 py-2 text-left font-mono text-[11.5px] text-cyan hover:bg-panel-3"
+            >
+              ✦ gerar dossiê com IA local sobre “{q}” →
+            </button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => pick(undefined)} className="w-full border-t border-line px-3 py-1.5 text-left font-mono text-[11px] text-ink-2 hover:text-cyan">
               ver todos os resultados para “{q}” ↵
             </button>
           </div>
@@ -139,6 +150,7 @@ export function TopBar({ stats, countries, onSelect, pending }: { stats: Stats; 
         </div>
       </dl>
       <nav className="hidden items-center gap-3 font-mono text-[11px] text-ink-2 md:flex">
+        <Link href="/busca" className="text-cyan hover:underline">dossiê IA</Link>
         <Link href="/pensadores" className="hover:text-cyan">pensadores</Link>
         <Link href="/ideologias" className="hover:text-cyan">ideologias</Link>
         <Link href="/metodologia" className="hover:text-cyan">metodologia</Link>
