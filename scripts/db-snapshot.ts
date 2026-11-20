@@ -4,6 +4,7 @@
 //
 //   tsx scripts/db-snapshot.ts export <dir>   # dump every table
 //   tsx scripts/db-snapshot.ts import <dir>   # load into a database whose schema is already pushed
+import { once } from "node:events";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -41,7 +42,13 @@ async function exportAll() {
     const cols = await columns(t);
     manifest[t] = cols;
     const stream = await sql`copy ${sql(t)} (${sql(cols)}) to stdout`.readable();
-    await pipeline(stream, createGzip({ level: 6 }), createWriteStream(path.join(dir, `${t}.tsv.gz`)));
+    const gzip = createGzip({ level: 6 });
+    const done = pipeline(gzip, createWriteStream(path.join(dir, `${t}.tsv.gz`)));
+    for await (const chunk of stream) {
+      if (!gzip.write(chunk)) await once(gzip, "drain");
+    }
+    gzip.end();
+    await done;
     console.log(`exportado ${t}`);
   }
   await writeFile(path.join(dir, "manifest.json"), JSON.stringify({ at: new Date().toISOString(), tables: manifest }, null, 1));
