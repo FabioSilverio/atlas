@@ -230,7 +230,7 @@
     "publisher": "World Bank",
     "url": "https://data.worldbank.org/",
     "license": "CC BY 4.0",
-    "citation": "World Bank, World Development Indicators: PA.NUS.PRVT.PP, PA.NUS.FCRF, FP.CPI.TOTL.ZG, NY.GDP.PCAP.CD, NY.GDP.PCAP.PP.CD.",
+    "citation": "World Bank, World Development Indicators: PA.NUS.PRVT.PP, PA.NUS.FCRF, FP.CPI.TOTL.ZG, NY.GDP.PCAP.CD, NY.GDP.PCAP.PP.CD, SP.POP.TOTL, SI.POV.GINI, SL.UEM.TOTL.ZS, SP.DYN.LE00.IN, MS.MIL.XPND.GD.ZS, VC.IHR.PSRC.P5.",
     "version": "ao vivo"
   },
   {
@@ -241,5 +241,41 @@
     "license": "Metadados de posts públicos (texto, link, métricas)",
     "citation": "Posts públicos recentes das vozes curadas, lidos pela API aberta do FxTwitter (api.fxtwitter.com).",
     "version": "ao vivo"
+  },
+  {
+    "id": "vdem-indices",
+    "name": "V-Dem — Índices de democracia liberal e liberdade de expressão, via Our World in Data",
+    "publisher": "V-Dem Institute / Our World in Data",
+    "url": "https://ourworldindata.org/grapher/liberal-democracy-index",
+    "license": "CC BY 4.0",
+    "citation": "Coppedge et al., V-Dem Dataset; processado por Our World in Data (libdem, freeexpr: 0 a 1).",
+    "version": "anual"
+  },
+  {
+    "id": "freedom-house",
+    "name": "Freedom House — Freedom in the World",
+    "publisher": "Freedom House",
+    "url": "https://freedomhouse.org/report/freedom-world",
+    "license": "Uso com atribuição",
+    "citation": "Freedom House, Freedom in the World: direitos políticos (0–40) + liberdades civis (0–60), via Our World in Data.",
+    "version": "anual"
+  },
+  {
+    "id": "undp-hdi",
+    "name": "PNUD — Índice de Desenvolvimento Humano, via Our World in Data",
+    "publisher": "UNDP / Our World in Data",
+    "url": "https://ourworldindata.org/grapher/human-development-index",
+    "license": "CC BY 4.0",
+    "citation": "UNDP, Human Development Report; processado por Our World in Data.",
+    "version": "anual"
+  },
+  {
+    "id": "ti-cpi",
+    "name": "Transparência Internacional — Índice de Percepção da Corrupção, via Our World in Data",
+    "publisher": "Transparency International / Our World in Data",
+    "url": "https://ourworldindata.org/grapher/ti-corruption-perception-index",
+    "license": "CC BY-ND 4.0",
+    "citation": "Transparency International, Corruption Perceptions Index (0 = muito corrupto, 100 = muito limpo).",
+    "version": "anual"
   }
 ]

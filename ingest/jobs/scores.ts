@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import estimatesSeed from "@/data/seed/overrides/estimates.json";
 import { db, schema } from "@/lib/db/client";
 import { HERRE_CATEGORY_VALUE, normalize, type Dimension } from "@/lib/ideology/normalize";
 import { FAMILY_NAME, alignmentEstimate, familyOf } from "@/lib/ideology/labels";
@@ -18,10 +19,21 @@ import {
   URLS,
 } from "../lib/datasets";
 import { touchSource, type Job } from "../lib/job";
+import { log } from "../lib/log";
 import { partyFactsNameIndex } from "../lib/partyfacts-names";
 import { norm, num, sameLeader } from "../lib/text";
 
 type Insert = typeof schema.ideologyScores.$inferInsert;
+type Estimate = {
+  applies_to: "regime" | "chief";
+  regimes?: string[];
+  for_chief?: string;
+  econ_lr?: { value: number; label: string };
+  galtan?: { value: number; label: string };
+  justification: string;
+  source_url: string;
+  verified_at: string;
+};
 type Party = typeof schema.parties.$inferSelect;
 const SOURCES = ["ches-europe-2024", "ches-la-2020", "ches-canada-2023", "ches-israel-2022", "parlgov", "gps-2019", "herre-gli", "wikidata"];
 
@@ -321,10 +333,49 @@ export const scoresJob: Job = {
       }
     }
 
-    // Full refresh of these sources; editorial estimates (atlas-curation) are left alone.
+    // Editorial estimates (data/seed/overrides/estimates.json), attached to the current chief
+    // executive only while the entry still applies: same regime type, or the same person.
+    const chiefsNow = (await db.execute(sql`
+      select c.code, c.regime_type as regime, pe.id as person_id, pe.name, pe.name_en
+      from governments g
+      join countries c on c.code = g.country_code
+      join people pe on pe.id = case when g.chief_executive_role = 'head_of_state' then g.head_of_state_id else g.head_of_government_id end
+      where g.ended_on is null`)) as unknown as { code: string; regime: string | null; person_id: number; name: string; name_en: string | null }[];
+    const editorial: Insert[] = [];
+    for (const g of chiefsNow) {
+      const e = (estimatesSeed as unknown as Record<string, Estimate>)[g.code.trim()];
+      if (!e || typeof e !== "object" || !("justification" in e)) continue;
+      const applies = e.applies_to === "regime"
+        ? !e.regimes?.length || (g.regime != null && e.regimes.includes(g.regime))
+        : sameLeader(e.for_chief ?? "", g.name) || sameLeader(e.for_chief ?? "", g.name_en ?? "");
+      if (!applies) {
+        log.warn(`${g.code}: estimativa editorial não se aplica mais (${e.applies_to === "regime" ? `regime ${g.regime}` : `chefe ${g.name}`}); ignorada`);
+        continue;
+      }
+      for (const dim of ["econ_lr", "galtan"] as const) {
+        const v = e[dim];
+        if (!v) continue;
+        editorial.push({
+          personId: g.person_id,
+          dimension: dim,
+          rawLabel: v.label,
+          valueNorm: String(v.value),
+          method: "editorial_estimate",
+          subjectName: g.name,
+          notes: `${e.justification}${e.applies_to === "regime" ? " A estimativa descreve o regime e vale enquanto o tipo de regime não mudar." : ""}`,
+          sourceId: "atlas-curation",
+          sourceUrl: e.source_url,
+        });
+      }
+    }
+    count["editorial-estimate"] = editorial.length;
+
+    // Full refresh of these sources and of the editorial estimates.
     await db.transaction(async (tx) => {
       await tx.delete(schema.ideologyScores).where(inArray(schema.ideologyScores.sourceId, SOURCES));
-      for (let i = 0; i < rows.length; i += 200) await tx.insert(schema.ideologyScores).values(rows.slice(i, i + 200));
+      await tx.delete(schema.ideologyScores).where(and(eq(schema.ideologyScores.sourceId, "atlas-curation"), eq(schema.ideologyScores.method, "editorial_estimate")));
+      const all = [...rows, ...editorial];
+      for (let i = 0; i < all.length; i += 200) await tx.insert(schema.ideologyScores).values(all.slice(i, i + 200));
     });
     for (const s of SOURCES) await touchSource(s);
 

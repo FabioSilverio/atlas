@@ -8,12 +8,19 @@ import { fetchText } from "../lib/http";
 import { touchSource, type Job } from "../lib/job";
 import { log } from "../lib/log";
 import { qid, sparql } from "../lib/sparql";
+import { sameLeader } from "../lib/text";
 
 type Override = {
   chief_executive_role?: Role;
   head_of_state?: { qid: string; name: string };
   head_of_government?: { qid: string; name: string };
   party_qids?: string[];
+  /**
+   * Party that sustains a chief executive Wikidata lists without a party (a technocrat
+   * backed by the ruling party, or a missing P102). Used only while the chief named
+   * in `for_chief` is still in office, so a stale entry never mislabels a successor.
+   */
+  backing_parties?: { qid: string; name: string; for_chief: string }[];
   justification: string;
   source_url: string;
   verified_at: string;
@@ -231,6 +238,13 @@ export const governmentsJob: Job = {
       const chiefParties = [...(h?.parties.get(chiefHead.qid)?.values() ?? [])]
         .filter((p) => !ov?.party_qids || ov.party_qids.includes(p.qid))
         .sort((a, b) => (b.since ?? "").localeCompare(a.since ?? ""));
+      const backing = (ov?.backing_parties ?? []).filter((p) => sameLeader(p.for_chief, chiefHead.name) || sameLeader(p.for_chief, chiefHead.nameEn ?? ""));
+      if (!chiefParties.length && backing.length) {
+        chiefParties.push(...backing.map((p) => ({ qid: p.qid, name: p.name })));
+        rule += ` Sem filiação no Wikidata; usamos o partido que o sustenta (${backing.map((p) => p.name).join(", ")}), por curadoria: ${ov!.justification}`;
+      } else if (ov?.backing_parties?.length && !backing.length) {
+        log.warn(`${c.code}: curadoria de partido feita para ${ov.backing_parties.map((p) => p.for_chief).join("/")}, mas o chefe agora é ${chiefHead.name}; ignorada`);
+      }
       const otherParties = otherHead ? [...(h?.parties.get(otherHead.qid)?.values() ?? [])] : [];
 
       const next = elections.byCountry.get(c.code);

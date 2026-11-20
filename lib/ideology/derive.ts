@@ -33,7 +33,7 @@ export type DeriveInput = {
 export type DerivationInput = ScoreInput & { partyName?: string | null };
 
 export type Derivation = {
-  rule: "party_of_chief_executive" | "leader_coding" | "party_proxy" | "label_estimate" | "none";
+  rule: "party_of_chief_executive" | "leader_coding" | "party_proxy" | "label_estimate" | "editorial_estimate" | "none";
   explanation: string;
   chosen: DerivationInput | null;
   alternatives: DerivationInput[];
@@ -188,7 +188,26 @@ export function deriveGovernmentPosition(i: DeriveInput): DeriveResult {
     };
   }
 
-  // 5. Nothing usable: say exactly why.
+  // 5. Last resort: a sourced editorial estimate (regimes without parties, juntas,
+  // absolute monarchies, or parties no dataset covers). Never beats any measured data.
+  const editorial = ofDim.filter((s) => s.personId != null && s.personId === i.chiefPersonId && s.method === "editorial_estimate");
+  if (editorial.length) {
+    const chosen = editorial[0];
+    return {
+      valueNorm: chosen.valueNorm,
+      confidence: "D",
+      isEstimate: true,
+      derivation: {
+        rule: "editorial_estimate",
+        explanation: `Estimativa editorial do ATLAS (${chosen.rawLabel}): nenhuma base acadêmica ou rótulo do Wikidata cobre este governo. Critério: ${chosen.notes}`,
+        chosen: withName(chosen),
+        alternatives: [],
+        caveats: ["Classificação categórica feita pela curadoria a partir das fontes citadas, não uma medição de especialistas."],
+      },
+    };
+  }
+
+  // 6. Nothing usable: say exactly why.
   let why: string;
   if (!i.chiefParties.length)
     why = `${i.chiefPersonName ?? "O chefe do executivo"} não tem filiação partidária registrada no Wikidata (independente, monarca, militar ou dado ausente), e não há codificação individual em Herre (2023).`;

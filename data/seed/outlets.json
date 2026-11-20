@@ -1,5 +1,5 @@
 {
-  "_doc": "Veículos e feeds RSS monitorados. kind = opinion (seção de opinião) ou politics (feed de política geral, usado onde não achamos feed de opinião). Para adicionar um veículo, inclua uma entrada e teste o feed.",
+  "_doc": "Veículos e feeds RSS monitorados. kind = opinion (seção de opinião) ou politics (feed de política geral, usado onde não achamos feed de opinião). Para adicionar um veículo, inclua uma entrada e teste o feed. lean/lean_source = orientação política editorial com fonte (Wikipédia ou Media Bias/Fact Check), usada quando presente; senão vale o Wikidata (P1387).",
   "outlets": [
     {
       "id": "folha",
@@ -10,7 +10,9 @@
       "kind": "opinion",
       "feeds": [
         "https://feeds.folha.uol.com.br/opiniao/rss091.xml"
-      ]
+      ],
+      "lean": "centro-esquerda (pluralista)",
+      "lean_source": "https://mediabiasfactcheck.com/folha-de-s-paulo-bias-and-credibility/"
     },
     {
       "id": "estadao",
@@ -21,7 +23,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.estadao.com.br/arc/outboundfeeds/feeds/rss/sections/opiniao/"
-      ]
+      ],
+      "lean": "centro-direita",
+      "lean_source": "https://en.wikipedia.org/wiki/O_Estado_de_S._Paulo"
     },
     {
       "id": "oglobo",
@@ -32,7 +36,9 @@
       "kind": "opinion",
       "feeds": [
         "https://oglobo.globo.com/rss/oglobo/opiniao"
-      ]
+      ],
+      "lean": "centro-direita (liberal-conservador)",
+      "lean_source": "https://en.wikipedia.org/wiki/O_Globo"
     },
     {
       "id": "cartacapital",
@@ -65,7 +71,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.gazetadopovo.com.br/feed/rss/opiniao.xml"
-      ]
+      ],
+      "lean": "direita (conservador)",
+      "lean_source": "https://en.wikipedia.org/wiki/Gazeta_do_Povo"
     },
     {
       "id": "nyt",
@@ -76,7 +84,9 @@
       "kind": "opinion",
       "feeds": [
         "https://rss.nytimes.com/services/xml/rss/nyt/Opinion.xml"
-      ]
+      ],
+      "lean": "centro-esquerda",
+      "lean_source": "https://mediabiasfactcheck.com/new-york-times/"
     },
     {
       "id": "wapo",
@@ -87,7 +97,9 @@
       "kind": "opinion",
       "feeds": [
         "https://feeds.washingtonpost.com/rss/opinions"
-      ]
+      ],
+      "lean": "centro-esquerda",
+      "lean_source": "https://mediabiasfactcheck.com/washington-post/"
     },
     {
       "id": "wsj",
@@ -98,7 +110,9 @@
       "kind": "opinion",
       "feeds": [
         "https://feeds.a.dj.com/rss/RSSOpinion.xml"
-      ]
+      ],
+      "lean": "centro-direita",
+      "lean_source": "https://mediabiasfactcheck.com/wall-street-journal/"
     },
     {
       "id": "foxnews",
@@ -109,7 +123,9 @@
       "kind": "opinion",
       "feeds": [
         "https://moxie.foxnews.com/google-publisher/opinion.xml"
-      ]
+      ],
+      "lean": "direita",
+      "lean_source": "https://mediabiasfactcheck.com/fox-news-bias/"
     },
     {
       "id": "guardian",
@@ -120,7 +136,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.theguardian.com/uk/commentisfree/rss"
-      ]
+      ],
+      "lean": "centro-esquerda",
+      "lean_source": "https://mediabiasfactcheck.com/the-guardian/"
     },
     {
       "id": "telegraph",
@@ -131,7 +149,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.telegraph.co.uk/opinion/rss.xml"
-      ]
+      ],
+      "lean": "direita (conservador)",
+      "lean_source": "https://mediabiasfactcheck.com/daily-telegraph/"
     },
     {
       "id": "lemonde",
@@ -142,7 +162,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.lemonde.fr/idees/rss_full.xml"
-      ]
+      ],
+      "lean": "centro-esquerda",
+      "lean_source": "https://mediabiasfactcheck.com/le-monde-bias/"
     },
     {
       "id": "lefigaro",
@@ -153,7 +175,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.lefigaro.fr/rss/figaro_vox.xml"
-      ]
+      ],
+      "lean": "centro-direita",
+      "lean_source": "https://mediabiasfactcheck.com/le-figaro-bias/"
     },
     {
       "id": "faz",
@@ -164,7 +188,9 @@
       "kind": "politics",
       "feeds": [
         "https://www.faz.net/rss/aktuell/politik/"
-      ]
+      ],
+      "lean": "centro-direita (liberal-conservador)",
+      "lean_source": "https://en.wikipedia.org/wiki/Frankfurter_Allgemeine_Zeitung"
     },
     {
       "id": "zeit",
@@ -175,7 +201,9 @@
       "kind": "politics",
       "feeds": [
         "https://newsfeed.zeit.de/politik/index"
-      ]
+      ],
+      "lean": "centro-esquerda (liberal)",
+      "lean_source": "https://en.wikipedia.org/wiki/Die_Zeit"
     },
     {
       "id": "elpais",
@@ -186,7 +214,9 @@
       "kind": "opinion",
       "feeds": [
         "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada"
-      ]
+      ],
+      "lean": "centro-esquerda",
+      "lean_source": "https://en.wikipedia.org/wiki/El_Pa%C3%ADs"
     },
     {
       "id": "elmundo",
@@ -197,7 +227,9 @@
       "kind": "opinion",
       "feeds": [
         "https://e00-elmundo.uecdn.es/elmundo/rss/opinion.xml"
-      ]
+      ],
+      "lean": "centro-direita",
+      "lean_source": "https://en.wikipedia.org/wiki/El_Mundo_(Spain)"
     },
     {
       "id": "lanacion",
@@ -208,7 +240,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/opinion/"
-      ]
+      ],
+      "lean": "centro-direita (liberal-conservador)",
+      "lean_source": "https://es.wikipedia.org/wiki/La_Naci%C3%B3n_(Argentina)"
     },
     {
       "id": "clarin",
@@ -219,7 +253,35 @@
       "kind": "opinion",
       "feeds": [
         "https://www.clarin.com/rss/opinion/"
-      ]
+      ],
+      "lean": "centro / centro-direita (liberal, antikirchnerista)",
+      "lean_source": "https://mediabiasfactcheck.com/clarin-bias/"
+    },
+    {
+      "id": "pagina12",
+      "country": "ARG",
+      "name": "Página/12",
+      "url": "https://www.pagina12.com.ar",
+      "language": "es",
+      "kind": "politics",
+      "feeds": [
+        "https://www.pagina12.com.ar/arc/outboundfeeds/rss/?outputType=xml"
+      ],
+      "lean": "esquerda (progressista, kirchnerista)",
+      "lean_source": "https://en.wikipedia.org/wiki/P%C3%A1gina/12"
+    },
+    {
+      "id": "infobae",
+      "country": "ARG",
+      "name": "Infobae",
+      "url": "https://www.infobae.com",
+      "language": "es",
+      "kind": "opinion",
+      "feeds": [
+        "https://www.infobae.com/arc/outboundfeeds/rss/category/opinion/"
+      ],
+      "lean": "centro-direita (antikirchnerista)",
+      "lean_source": "https://en.wikipedia.org/wiki/Infobae"
     },
     {
       "id": "observador",
@@ -230,7 +292,9 @@
       "kind": "opinion",
       "feeds": [
         "https://observador.pt/opiniao/feed/"
-      ]
+      ],
+      "lean": "direita",
+      "lean_source": "https://en.wikipedia.org/wiki/Observador"
     },
     {
       "id": "thehindu",
@@ -241,7 +305,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.thehindu.com/opinion/feeder/default.rss"
-      ]
+      ],
+      "lean": "centro-esquerda",
+      "lean_source": "https://en.wikipedia.org/wiki/The_Hindu"
     },
     {
       "id": "indianexpress",
@@ -263,7 +329,9 @@
       "kind": "politics",
       "feeds": [
         "https://www.japantimes.co.jp/feed/"
-      ]
+      ],
+      "lean": "centro",
+      "lean_source": "https://en.wikipedia.org/wiki/The_Japan_Times"
     },
     {
       "id": "globeandmail",
@@ -285,7 +353,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.haaretz.com/srv/opinion-rss"
-      ]
+      ],
+      "lean": "centro-esquerda / esquerda",
+      "lean_source": "https://en.wikipedia.org/wiki/Haaretz"
     },
     {
       "id": "timesofisrael",
@@ -296,7 +366,9 @@
       "kind": "opinion",
       "feeds": [
         "https://blogs.timesofisrael.com/feed/"
-      ]
+      ],
+      "lean": "centro",
+      "lean_source": "https://en.wikipedia.org/wiki/The_Times_of_Israel"
     },
     {
       "id": "latercera",
@@ -307,7 +379,9 @@
       "kind": "politics",
       "feeds": [
         "https://www.latercera.com/arc/outboundfeeds/rss/?outputType=xml"
-      ]
+      ],
+      "lean": "centro-direita (conservador moderado)",
+      "lean_source": "https://en.wikipedia.org/wiki/La_Tercera"
     },
     {
       "id": "dailymaverick",
@@ -351,7 +425,9 @@
       "kind": "opinion",
       "feeds": [
         "https://www.dailysabah.com/rss/opinion"
-      ]
+      ],
+      "lean": "direita (pró-governo Erdoğan)",
+      "lean_source": "https://en.wikipedia.org/wiki/Daily_Sabah"
     },
     {
       "id": "moscowtimes",
@@ -373,7 +449,9 @@
       "kind": "politics",
       "feeds": [
         "https://www.globaltimes.cn/rss/outbrain.xml"
-      ]
+      ],
+      "lean": "estatal (linha do Partido Comunista Chinês)",
+      "lean_source": "https://en.wikipedia.org/wiki/Global_Times"
     },
     {
       "id": "scmp",
@@ -406,7 +484,9 @@
       "kind": "opinion",
       "feeds": [
         "https://elcomercio.pe/arcio/rss/category/opinion/"
-      ]
+      ],
+      "lean": "centro-direita (conservador)",
+      "lean_source": "https://en.wikipedia.org/wiki/El_Comercio_(Peru)"
     },
     {
       "id": "ladiaria",
@@ -417,7 +497,9 @@
       "kind": "politics",
       "feeds": [
         "https://ladiaria.com.uy/feeds/articulos/?seccion=opinion"
-      ]
+      ],
+      "lean": "esquerda",
+      "lean_source": "https://en.wikipedia.org/wiki/La_diaria"
     },
     {
       "id": "notesfrompoland",

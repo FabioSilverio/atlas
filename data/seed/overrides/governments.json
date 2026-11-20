@@ -26,9 +26,16 @@
   },
   "MNG": {
     "chief_executive_role": "head_of_government",
-    "justification": "Desde a reforma constitucional de 2019 o primeiro-ministro chefia o executivo; o presidente tem mandato único e poderes limitados.",
-    "source_url": "https://www.legalinfo.mn/",
-    "verified_at": "2026-10-05"
+    "justification": "Desde a reforma constitucional de 2019 o primeiro-ministro chefia o executivo; o presidente tem mandato único e poderes limitados. Nyam-Osoryn Uchral, primeiro-ministro desde março de 2026, é presidente do Partido Popular da Mongólia (MPP), que lidera a coalizão de governo.",
+    "source_url": "https://en.wikipedia.org/wiki/Nyam-Osoryn_Uchral",
+    "verified_at": "2026-11-20",
+    "backing_parties": [
+      {
+        "qid": "Q1127178",
+        "name": "Partido Popular da Mongólia",
+        "for_chief": "Uchral"
+      }
+    ]
   },
   "TLS": {
     "chief_executive_role": "head_of_government",
@@ -79,27 +86,92 @@
     "verified_at": "2026-10-05"
   },
   "CHL": {
-    "party_qids": ["Q64539214"],
+    "party_qids": [
+      "Q64539214"
+    ],
     "justification": "José Antonio Kast fundou e presidiu o Partido Republicano do Chile; presidentes chilenos costumam suspender formalmente a filiação partidária ao assumir, o que remove o vínculo aberto no Wikidata.",
     "source_url": "https://www.wikidata.org/wiki/Q5937916",
     "verified_at": "2026-11-20"
   },
   "UKR": {
-    "party_qids": ["Q54877772"],
-    "justification": "Volodymyr Zelenski governa pelo partido Servo do Povo (maioria na Verkhovna Rada), embora figure como independente no Wikidata.",
-    "source_url": "https://www.wikidata.org/wiki/Q54877772",
-    "verified_at": "2026-11-20"
+    "justification": "Volodymyr Zelensky foi eleito em 2019 como candidato do Servo do Povo, partido que fundou e que tem maioria na Verkhovna Rada, mas figura como independente no Wikidata.",
+    "source_url": "https://www.wikidata.org/wiki/Q52292915",
+    "verified_at": "2026-11-20",
+    "backing_parties": [
+      {
+        "qid": "Q52292915",
+        "name": "Servo do Povo",
+        "for_chief": "Volodymyr"
+      }
+    ]
   },
   "CYP": {
-    "party_qids": ["Q644973"],
+    "party_qids": [
+      "Q644973"
+    ],
     "justification": "Nikos Christodoulides tem origem política no Aliança Democrática (DISY) registrado no Wikidata (P102).",
     "source_url": "https://www.wikidata.org/wiki/Q48905549",
     "verified_at": "2026-11-20"
   },
   "BOL": {
-    "party_qids": ["Q2549658"],
-    "justification": "Rodrigo Paz Pereira foi eleito pelo Partido Democrata Cristão (PDC) da Bolívia.",
-    "source_url": "https://www.wikidata.org/wiki/Q110520817",
+    "justification": "Rodrigo Paz Pereira foi eleito em 2025 pelo Partido Democrata Cristão (PDC) da Bolívia.",
+    "source_url": "https://www.cidob.org/lider-politico/rodrigo-paz-pereira",
+    "verified_at": "2026-11-20",
+    "backing_parties": [
+      {
+        "qid": "Q2605787",
+        "name": "Partido Democrata Cristão",
+        "for_chief": "Rodrigo Paz"
+      }
+    ]
+  },
+  "MDA": {
+    "chief_executive_role": "head_of_government",
+    "backing_parties": [
+      {
+        "qid": "Q24909066",
+        "name": "Partido Ação e Solidariedade",
+        "for_chief": "Tofan"
+      }
+    ],
+    "justification": "Vasile Tofan, sem filiação partidária, foi indicado pelo PAS (Partido Ação e Solidariedade), que tem maioria no parlamento, e eleito premiê em 21/07/2026.",
+    "source_url": "https://moldpres.md/eng/politics/pas-national-political-council-approved-vasile-tofan-s-candidacy-for-position-of-prime-minister",
+    "verified_at": "2026-11-20"
+  },
+  "SRB": {
+    "backing_parties": [
+      {
+        "qid": "Q253586",
+        "name": "Partido Progressista Sérvio",
+        "for_chief": "Macut"
+      }
+    ],
+    "justification": "O primeiro-ministro Đuro Macut não é filiado a partido; foi escolhido pelo presidente Aleksandar Vučić e é sustentado pelo Partido Progressista Sérvio (SNS), que domina a coalizão de governo.",
+    "source_url": "https://www.cidob.org/en/lider-politico/duro-macut",
+    "verified_at": "2026-11-20"
+  },
+  "PRY": {
+    "backing_parties": [
+      {
+        "qid": "Q928949",
+        "name": "Partido Colorado (ANR)",
+        "for_chief": "Alliana"
+      }
+    ],
+    "justification": "Pedro Alliana, vice-presidente que assumiu a Presidência em 06/11/2026 após a saída de Santiago Peña, foi presidente do Partido Colorado (ANR) por dois mandatos.",
+    "source_url": "https://www.cidob.org/lider-politico/pedro-alliana-rodriguez",
+    "verified_at": "2026-11-20"
+  },
+  "STP": {
+    "backing_parties": [
+      {
+        "qid": "Q2788422",
+        "name": "Acção Democrática Independente",
+        "for_chief": "Américo Ramos"
+      }
+    ],
+    "justification": "O primeiro-ministro Américo Ramos foi indicado pela Acção Democrática Independente (ADI), partido majoritário na Assembleia Nacional.",
+    "source_url": "https://www.wikidata.org/wiki/Q2788422",
     "verified_at": "2026-11-20"
   }
 }

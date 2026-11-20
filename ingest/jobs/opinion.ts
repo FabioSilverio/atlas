@@ -10,7 +10,7 @@ import { qid, sparql } from "../lib/sparql";
 import { norm } from "../lib/text";
 import { chunks } from "../lib/wiki";
 
-type SeedOutlet = { id: string; country: string; name: string; url: string; language: string; kind: string; feeds: string[] };
+type SeedOutlet = { id: string; country: string; name: string; url: string; language: string; kind: string; feeds: string[]; lean?: string; lean_source?: string };
 const OUTLETS = (outletsSeed as { outlets: SeedOutlet[] }).outlets;
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@", textNodeName: "#text", processEntities: true });
 
@@ -101,7 +101,8 @@ export const opinionJob: Job = {
         kind: o.kind,
         feeds: o.feeds,
         wikidataQid: wd?.qid ?? null,
-        alignment: wd?.alignment ?? null,
+        // Sourced editorial lean first (Wikipedia/MBFC, see the seed), then Wikidata P1387.
+        alignment: o.lean ?? wd?.alignment ?? null,
         sourceId: "rss",
         sourceUrl: o.feeds[0],
         updatedAt: new Date(),

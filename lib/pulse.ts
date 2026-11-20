@@ -28,3 +28,13 @@ export async function getCountryCost(code: string): Promise<CountryCost | null> 
   const n = (k: string) => (v(k) ? Number(v(k)!.value) : null);
   return { priceLevel: n("price_level"), inflation: n("inflation"), gdpPc: n("gdp_pc"), gdpPcPpp: n("gdp_pc_ppp"), year: v("price_level")?.year ?? v("gdp_pc")?.year ?? null, sources: Object.fromEntries(r.map((x) => [x.indicator, x.source_url])) };
 }
+
+export type CountryIndicator = { indicator: string; value: number; year: number; sourceUrl: string | null };
+
+/** Society, democracy and governance indicators (World Bank, V-Dem, Freedom House, UNDP, TI). */
+export async function getCountryIndicators(code: string): Promise<CountryIndicator[]> {
+  const r = await rows<{ indicator: string; value: string; year: number; source_url: string | null }>(
+    sql`select indicator, value, year, source_url from country_indicators where country_code = ${code}`,
+  );
+  return r.map((x) => ({ indicator: x.indicator, value: Number(x.value), year: x.year, sourceUrl: x.source_url }));
+}

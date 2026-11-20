@@ -69,6 +69,24 @@ describe("deriveGovernmentPosition", () => {
     expect(r.derivation.alternatives.map((a) => a.id)).toEqual([3, 1]);
   });
 
+  it("uses a sourced editorial estimate only when nothing else exists", () => {
+    const editorial = score({ id: 5, partyId: null, personId: 7, method: "editorial_estimate", sourceId: "atlas-curation", valueNorm: 0.3, rawLabel: "centro-direita", notes: "monarquia absoluta" });
+    const alone = deriveGovernmentPosition({ ...base, chiefParties: [], scores: [editorial] });
+    expect(alone.valueNorm).toBe(0.3);
+    expect(alone.confidence).toBe("D");
+    expect(alone.isEstimate).toBe(true);
+    expect(alone.derivation.rule).toBe("editorial_estimate");
+
+    const label = score({ id: 6, partyId: null, personId: 7, method: "alignment_label", sourceId: "wikidata", valueNorm: -0.3, notes: "rótulo" });
+    const withLabel = deriveGovernmentPosition({ ...base, chiefParties: [], scores: [editorial, label] });
+    expect(withLabel.derivation.rule).toBe("label_estimate");
+    expect(withLabel.valueNorm).toBe(-0.3);
+
+    // An estimate for someone who is no longer the chief executive is ignored.
+    const stale = deriveGovernmentPosition({ ...base, chiefParties: [], scores: [{ ...editorial, personId: 99 }] });
+    expect(stale.valueNorm).toBeNull();
+  });
+
   it("downgrades old surveys to B", () => {
     const r = deriveGovernmentPosition({ ...base, scores: [score({ sourceId: "gps-2019", observedYear: 2019 })] });
     expect(r.confidence).toBe("B");

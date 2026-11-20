@@ -1,5 +1,13 @@
+import outletsSeed from "@/data/seed/outlets.json";
 import { getCountryOpinion } from "@/lib/knowledge";
 import { fmtDate } from "@/lib/ui/labels";
+
+/** Source of each outlet's editorial classification (Wikipedia or Media Bias/Fact Check). */
+const LEAN_SOURCE = new Map(
+  (outletsSeed as { outlets: { id: string; lean?: string; lean_source?: string }[] }).outlets
+    .filter((o) => o.lean && o.lean_source)
+    .map((o) => [o.id, { lean: o.lean!, url: o.lean_source! }]),
+);
 
 const TREND: Record<string, { mark: string; cls: string; label: string }> = {
   rising: { mark: "▲", cls: "text-cyan", label: "subindo" },
@@ -55,15 +63,23 @@ export async function OpinionSection({ code }: { code: string }) {
         <h3 className="label mb-2">Colunistas e veículos</h3>
         <ul className="space-y-1">
           {o.outlets.map((v) => (
-            <li key={v.id} className="flex items-baseline justify-between gap-2 text-[12.5px]">
-              <a href={v.url} target="_blank" rel="noreferrer" className="truncate text-ink hover:text-cyan">
+            <li key={v.id} className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-[12.5px]">
+              <a href={v.url} target="_blank" rel="noreferrer" className="min-w-0 truncate text-ink hover:text-cyan">
                 {v.name}
                 {v.kind === "politics" && <span className="ml-1 font-mono text-[9.5px] text-muted">(feed de política)</span>}
                 {v.kind === "aggregator" && <span className="ml-1 font-mono text-[9.5px] text-muted">(análises e opinião sobre o país, vários veículos)</span>}
               </a>
-              <span className="shrink-0 font-mono text-[10.5px] text-muted" title={v.alignment ? "Orientação política registrada no Wikidata (P1387)" : "Sem orientação registrada no Wikidata"}>
-                {v.alignment ?? "orientação não registrada"} · {v.articles}
-              </span>
+              {(() => {
+                const curated = LEAN_SOURCE.get(v.id);
+                const fromSeed = curated && curated.lean === v.alignment;
+                return (
+                  <span className="ml-auto text-right font-mono text-[10.5px] text-muted" title={fromSeed ? "Classificação editorial com fonte (clique para ver)" : v.alignment ? "Orientação política registrada no Wikidata (P1387)" : "Nenhuma fonte classifica este veículo"}>
+                    {fromSeed ? (
+                      <a href={curated.url} target="_blank" rel="noreferrer" className="text-ink-2 underline decoration-line-strong underline-offset-2 hover:text-cyan">{v.alignment}</a>
+                    ) : (v.alignment ?? "orientação não registrada")}{" "}· {v.articles}
+                  </span>
+                );
+              })()}
             </li>
           ))}
         </ul>

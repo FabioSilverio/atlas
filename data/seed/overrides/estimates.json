@@ -1,0 +1,469 @@
+{
+  "_doc": "Estimativas editoriais (confiança D) para governos que nenhuma base acadêmica (CHES, ParlGov, GPS, Herre) nem rótulo do Wikidata cobre: monarquias sem partidos, juntas militares, teocracias e partidos sem survey. Entram só como último recurso na derivação. applies_to = regime (vale enquanto o tipo de regime estiver em `regimes`) ou chief (vale só para o governante em `for_chief`). Escala: econ_lr −0,6 esquerda · −0,3 centro-esquerda · 0 centro · +0,3 centro-direita · +0,6 direita; galtan 0 centro · +0,3 conservador · +0,6 autoritário-conservador · +0,85 autoritário-tradicionalista. Toda entrada exige justification, source_url e verified_at.",
+  "SAU": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Monarquia absoluta sem partidos nem parlamento eleito; a lei se apoia na sharia, e críticas ao governo são punidas como terrorismo (Freedom House: Não Livre). Na economia, mercado aberto com estatais de petróleo e gás dominantes, sem imposto de renda pessoal e com programas de diversificação e privatização: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/saudi-arabia/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "ARE": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Federação de monarquias hereditárias; partidos são proibidos e o Conselho Nacional Federal é só consultivo (Freedom House: Não Livre). Na economia, mercado aberto com estatais de petróleo e gás dominantes, sem imposto de renda pessoal e com programas de diversificação e privatização: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/united-arab-emirates/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "QAT": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Monarquia hereditária em que o emir concentra os poderes; não há partidos, e a lei se apoia na sharia (Freedom House: Não Livre). Na economia, mercado aberto com estatais de petróleo e gás dominantes, sem imposto de renda pessoal e com programas de diversificação e privatização: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/qatar/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "BHR": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Monarquia em que a família Al Khalifa controla o governo; os principais grupos de oposição foram dissolvidos e seus líderes presos (Freedom House: Não Livre). Na economia, mercado aberto com estatais de petróleo e gás dominantes, sem imposto de renda pessoal e com programas de diversificação e privatização: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/bahrain/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "KWT": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0,
+      "label": "centro"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "O emir suspendeu o parlamento e trechos da Constituição em maio de 2024; partidos não são legalizados. Economia rentista com amplo emprego público e subsídios: centro.",
+    "source_url": "https://freedomhouse.org/country/kuwait/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "OMN": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Sultanato em que o sultão governa por decreto; partidos são proibidos e o conselho eleito é consultivo (Freedom House: Não Livre). Na economia, mercado aberto com estatais de petróleo e gás dominantes, sem imposto de renda pessoal e com programas de diversificação e privatização: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/oman/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "JOR": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "O rei nomeia o governo e pode dissolver o parlamento, que tem poderes limitados (Freedom House: Parcialmente Livre). Economia de mercado com reformas fiscais e privatizações acordadas com o FMI: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/jordan/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "MAR": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "O rei mantém a palavra final sobre segurança, religião e política externa e preside o Conselho de Ministros (Constituição de 2011); críticas ao monarca e ao islã são crime. Economia de mercado aberta, governo liderado pelo liberal RNI: centro-direita.",
+    "source_url": "https://freedomhouse.org/country/morocco/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "BRN": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "O sultão governa por decreto sob estado de emergência desde 1962 e aplica um Código Penal da Sharia desde 2019; não há eleições nacionais (Freedom House: Não Livre).",
+    "source_url": "https://freedomhouse.org/country/brunei/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "SWZ": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Última monarquia absoluta da África: partidos não podem disputar eleições desde o decreto de 1973, e o rei nomeia o governo (Freedom House: Não Livre).",
+    "source_url": "https://freedomhouse.org/country/eswatini/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "PRK": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Ditadura hereditária de partido único com culto à personalidade; todas as liberdades civis são suprimidas (Freedom House: Não Livre, uma das piores notas do mundo).",
+    "source_url": "https://freedomhouse.org/country/north-korea/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "RUS": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Autoritarismo nacional-conservador: leis de defesa dos 'valores tradicionais', movimento LGBT declarado 'extremista' em 2023, censura e prisão de opositores desde a invasão da Ucrânia (Freedom House: Não Livre).",
+    "source_url": "https://freedomhouse.org/country/russia/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "IRN": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.85,
+      "label": "autoritário-tradicionalista"
+    },
+    "justification": "Teocracia: o Líder Supremo (Mojtaba Khamenei desde março de 2026), escolhido pela Assembleia de Peritos, controla o Judiciário, as forças armadas e a mídia estatal; candidaturas passam pelo filtro do Conselho dos Guardiões (Freedom House: Não Livre). Sem estimativa no eixo econômico: a economia mistura estatais, fundações religiosas e conglomerados da Guarda Revolucionária.",
+    "source_url": "https://freedomhouse.org/country/iran/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "BFA": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": -0.3,
+      "label": "centro-esquerda (nacionalismo econômico)"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Junta militar no poder desde 2022, com partidos suspensos e eleições adiadas; discurso soberanista e aliança com Mali e Níger. Na economia, nacionalismo de recursos: novo código de mineração e nacionalização de minas de ouro.",
+    "source_url": "https://freedomhouse.org/country/burkina-faso/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "MLI": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": -0.3,
+      "label": "centro-esquerda (nacionalismo econômico)"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Junta militar no poder desde 2020/2021; dissolveu os partidos políticos em 2025 e prorrogou o mandato do general Goïta. Na economia, nacionalismo de recursos: código de mineração de 2023 e intervenção na mina de ouro Loulo-Gounkoto em 2025.",
+    "source_url": "https://freedomhouse.org/country/mali/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "NER": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "econ_lr": {
+      "value": -0.3,
+      "label": "centro-esquerda (nacionalismo econômico)"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Junta militar no poder desde o golpe de 2023; a carta de transição de 2025 dissolveu os partidos. Na economia, nacionalismo de recursos: nacionalização da mineradora de urânio Somair em 2025.",
+    "source_url": "https://freedomhouse.org/country/niger/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "GIN": {
+    "applies_to": "chief",
+    "for_chief": "Doumbouya",
+    "econ_lr": {
+      "value": -0.3,
+      "label": "centro-esquerda (nacionalismo econômico)"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Mamadi Doumbouya chegou ao poder num golpe em 2021 e foi eleito em 2025; seu partido GMD domina o parlamento eleito em 2026, com a oposição marginalizada. Na economia, nacionalismo de recursos: revogação de licenças de bauxita e controle estatal sobre o projeto Simandou.",
+    "source_url": "https://freedomhouse.org/country/guinea/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "GAB": {
+    "applies_to": "chief",
+    "for_chief": "Oligui",
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Brice Oligui Nguema liderou o golpe de 2023 e foi eleito em 2025 com cerca de 90% dos votos; seu partido UDB não é coberto por nenhuma base acadêmica.",
+    "source_url": "https://freedomhouse.org/country/gabon/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "MDG": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Comitê militar liderado pelo coronel Michael Randrianirina governa desde a tomada do poder em outubro de 2025, com eleições prometidas em até dois anos.",
+    "source_url": "https://www.aljazeera.com/news/2026/3/16/madagascar-names-anticorruption-chief-as-pm-days-after-cabinet-dissolved",
+    "verified_at": "2026-11-20"
+  },
+  "SDN": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Governo militar do general al-Burhan desde o golpe de 2021, em guerra civil contra as Forças de Apoio Rápido desde 2023 (Freedom House: Não Livre).",
+    "source_url": "https://freedomhouse.org/country/sudan/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "GNB": {
+    "applies_to": "regime",
+    "regimes": [
+      "closed_autocracy"
+    ],
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Governo militar de transição após o golpe de novembro de 2025, que interrompeu a apuração das eleições gerais (Freedom House).",
+    "source_url": "https://freedomhouse.org/country/guinea-bissau/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "EGY": {
+    "applies_to": "chief",
+    "for_chief": "Sisi",
+    "econ_lr": {
+      "value": 0,
+      "label": "centro"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Abdel Fattah al-Sisi governa desde o golpe de 2013, com oposição presa e eleições sem competição real (Freedom House: Não Livre). Economia dominada por estatais e conglomerados militares, mas com privatizações exigidas pelo FMI: centro.",
+    "source_url": "https://freedomhouse.org/country/egypt/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "TUN": {
+    "applies_to": "chief",
+    "for_chief": "Saied",
+    "econ_lr": {
+      "value": -0.3,
+      "label": "centro-esquerda (nacionalismo econômico)"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Kaïs Saïed fechou o parlamento em 2021, governa com uma Constituição feita sob medida e usa o Decreto 54 contra críticos (Freedom House: Não Livre). Discurso soberanista: rejeitou as condições do FMI e combate os 'monopólios' com controle de preços.",
+    "source_url": "https://freedomhouse.org/country/tunisia/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "SYR": {
+    "applies_to": "chief",
+    "for_chief": "Sharaa",
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Ahmed al-Sharaa, ex-líder do grupo islamista HTS, governa pela declaração constitucional de 2025, que concentra poderes no presidente e põe a jurisprudência islâmica como fonte principal de legislação. Na economia, anunciou liberalização e privatizações após o fim do regime Assad.",
+    "source_url": "https://freedomhouse.org/country/syria/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "KGZ": {
+    "applies_to": "chief",
+    "for_chief": "Japarov",
+    "econ_lr": {
+      "value": -0.3,
+      "label": "centro-esquerda (nacionalismo econômico)"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Sadyr Japarov concentrou poderes com a Constituição de 2021 e aprovou uma lei de 'agentes estrangeiros' em 2024 (Freedom House: Não Livre); seu partido Mekenchil não é coberto por nenhuma base acadêmica. Na economia, nacionalizou a mina de ouro de Kumtor (2022).",
+    "source_url": "https://freedomhouse.org/country/kyrgyzstan/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "DJI": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Ismaïl Omar Guelleh governa desde 1999; o parlamento retirou em 2025 o limite de idade que o impediria de concorrer de novo (Freedom House: Não Livre).",
+    "source_url": "https://freedomhouse.org/country/djibouti/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "CAF": {
+    "applies_to": "regime",
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Faustin-Archange Touadéra removeu o limite de mandatos no referendo de 2023 e depende de mercenários russos para a segurança (Freedom House: Não Livre).",
+    "source_url": "https://freedomhouse.org/country/central-african-republic/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "HKG": {
+    "applies_to": "regime",
+    "econ_lr": {
+      "value": 0.6,
+      "label": "direita"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Governo escolhido sob controle de Pequim; a Lei de Segurança Nacional de 2020 e a lei do Artigo 23 de 2024 desmontaram a oposição e a imprensa independente (Freedom House: Parcialmente Livre). Economia de livre mercado com impostos baixos: direita.",
+    "source_url": "https://freedomhouse.org/country/hong-kong/freedom-world/2025",
+    "verified_at": "2026-11-20"
+  },
+  "BEN": {
+    "applies_to": "chief",
+    "for_chief": "Wadagni",
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0.3,
+      "label": "conservador"
+    },
+    "justification": "Romuald Wadagni, ex-ministro das Finanças de Patrice Talon, foi eleito em 2026 pela coalizão governista (UP-R e BR), sem candidato da principal oposição, Os Democratas. Perfil tecnocrata de ortodoxia fiscal e atração de investimento privado: centro-direita.",
+    "source_url": "https://www.koaci.com/index.php/article/2026/05/24/benin/politique/benin-romuald-wadagni-prete-serment-et-succede-officiellement-a-patrice-talon_196917.html",
+    "verified_at": "2026-11-20"
+  },
+  "COL": {
+    "applies_to": "chief",
+    "for_chief": "Espriella",
+    "econ_lr": {
+      "value": 0.6,
+      "label": "direita"
+    },
+    "galtan": {
+      "value": 0.6,
+      "label": "autoritário-conservador"
+    },
+    "justification": "Abelardo de la Espriella venceu o segundo turno de 21/06/2026 pelo movimento Defensores de la Patria, que nenhuma base acadêmica cobre; análises o situam na direita dura, com pauta de mão dura na segurança e redução do Estado.",
+    "source_url": "https://www.cidob.org/lider-politico/abelardo-espriella-otero",
+    "verified_at": "2026-11-20"
+  },
+  "ROU": {
+    "applies_to": "chief",
+    "for_chief": "Niculescu",
+    "econ_lr": {
+      "value": 0,
+      "label": "centro"
+    },
+    "galtan": {
+      "value": 0,
+      "label": "centro"
+    },
+    "justification": "Luca Niculescu, diplomata sem partido, chefia desde outubro de 2026 um governo minoritário pró-UE apoiado por PSD (centro-esquerda), PNL (centro-direita) e UDMR: centro nos dois eixos.",
+    "source_url": "https://www.romania-insider.com/luca-niculescu-confirmed-romanias-new-prime-minister-ending",
+    "verified_at": "2026-11-20"
+  },
+  "LSO": {
+    "applies_to": "chief",
+    "for_chief": "Matekane",
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "justification": "Sam Matekane, empresário do setor de mineração, fundou o Revolution for Prosperity (2022) com plataforma pró-negócios e de atração de investimento privado; o partido não é coberto por nenhuma base acadêmica.",
+    "source_url": "https://www.wikidata.org/wiki/Q114562488",
+    "verified_at": "2026-11-20"
+  },
+  "CHE": {
+    "applies_to": "regime",
+    "econ_lr": {
+      "value": 0.3,
+      "label": "centro-direita"
+    },
+    "galtan": {
+      "value": 0,
+      "label": "centro"
+    },
+    "justification": "O executivo é o Conselho Federal colegiado (a 'fórmula mágica'): 2 UDC (direita nacional-conservadora), 2 PLR (liberal), 1 Centro e 2 PS (social-democrata). Cinco dos sete membros vêm da centro-direita, e os pesos se equilibram no eixo GAL-TAN.",
+    "source_url": "https://www.admin.ch/gov/en/start/federal-council/members-of-the-federal-council.html",
+    "verified_at": "2026-11-20"
+  }
+}
