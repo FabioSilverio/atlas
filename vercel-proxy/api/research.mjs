@@ -135,114 +135,130 @@ async function searchNews(q) {
   return out;
 }
 
-async function searchX(q) {
-  const cleanHandle = q.trim().replace(/^@/, "");
-  const isHandleLike = /^[A-Za-z0-9_]{2,25}$/.test(cleanHandle);
-  const handleGuess = q.trim().startsWith("@")
-    ? cleanHandle
-    : isHandleLike
-      ? cleanHandle
-      : q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+const FX = "https://api.fxtwitter.com/2";
+const REDDIT = "https://arctic-shift.photon-reddit.com/api";
+const DAY_MS = 86_400_000;
 
-  const [fxPosts, brX, enX] = await Promise.all([
-    (async () => {
-      if (!handleGuess || handleGuess.length < 3 || handleGuess.length > 25) return [];
-      try {
-        const res = await fetch(`https://api.fxtwitter.com/2/profile/${handleGuess}/statuses`, {
-          headers: { "User-Agent": ATLAS_UA },
-          signal: AbortSignal.timeout(6000),
-        });
-        if (!res.ok) return [];
-        const j = await res.json();
-        return (j.results ?? []).slice(0, 10).map((p) => ({
-          title: (p.text ?? "").replace(/\s+/g, " ").slice(0, 320),
-          author: p.author?.screen_name ? `@${p.author.screen_name}` : `@${handleGuess}`,
-          url: `https://x.com/${p.author?.screen_name ?? handleGuess}/status/${p.id}`,
-          engagement: (p.likes ?? 0) + 2 * (p.reposts ?? 0) + (p.replies ?? 0) + (p.quotes ?? 0),
-          publishedAt: p.created_timestamp ? new Date(p.created_timestamp * 1000).toISOString() : null,
-        }));
-      } catch {
-        return [];
-      }
-    })(),
-    fetchGNewsRss(`site:x.com "${q}"`, "pt-BR", "BR", "BR:pt-419"),
-    fetchGNewsRss(`site:x.com "${q}"`, "en-US", "US", "US:en"),
-  ]);
-
-  const seen = new Set();
-  const out = [];
-  for (const p of fxPosts) {
-    if (!p.title || seen.has(p.url)) continue;
-    seen.add(p.url);
-    out.push(p);
-  }
-  for (const it of [...brX, ...enX]) {
-    const key = it.title.toLowerCase().slice(0, 70);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      title: it.title,
-      author: it.source || "X",
-      url: it.url,
-      engagement: null,
-      publishedAt: it.publishedAt,
+async function fetchJson(url, timeout = 6000) {
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": ATLAS_UA },
+      signal: AbortSignal.timeout(timeout),
     });
-    if (out.length >= 16) break;
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
   }
-  return out;
+}
+
+function postDate(seconds) {
+  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null;
+}
+
+function xPost(p) {
+  const author = p?.author?.screen_name;
+  if (!p?.text || !author || !/^\d+$/.test(p.id)) return null;
+  return {
+    title: p.text.replace(/\s+/g, " ").slice(0, 320),
+    body: p.text.slice(0, 3500),
+    author: `@${author}`,
+    url: `https://x.com/${author}/status/${p.id}`,
+    engagement: (p.likes ?? 0) + 2 * (p.reposts ?? 0) + (p.replies ?? 0) + (p.quotes ?? 0),
+    publishedAt: postDate(p.created_timestamp),
+  };
+}
+
+async function searchX(q) {
+  const handle = /^@[a-z0-9_]{2,25}$/i.test(q) ? q.slice(1) : null;
+  const search = handle ? `from:${handle} OR @${handle}` : `"${q.replaceAll('"', " ")}"`;
+  const directId = q.match(/^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(?:[a-z0-9_]+|i\/web)\/status\/(\d{2,20})(?:[/?#]|$)/i)?.[1];
+  const direct = directId ? await fetchJson(`${FX}/conversation/${directId}`) : null;
+  const data = directId ? { results: [direct?.status] } : await fetchJson(`${FX}/search?${new URLSearchParams({ q: search, feed: "latest", count: "16" })}`);
+  const seen = new Set();
+  const matches = (data?.results ?? []).filter((p) => {
+    if (!xPost(p) || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  }).slice(0, 10);
+
+  return Promise.all(matches.map(async (p) => {
+    const post = xPost(p);
+    const conversation = direct ?? await fetchJson(`${FX}/conversation/${p.id}`, 5000);
+    const main = conversation?.status ?? p;
+    const used = new Set([p.id]);
+    const context = [
+      ...(conversation?.thread ?? []).map((entry) => ["Na conversa", entry]),
+      ["Post citado", main.quote],
+      ...(conversation?.replies ?? []).map((entry) => ["Resposta", entry]),
+    ].flatMap(([label, entry]) => {
+      const item = xPost(entry);
+      if (!item || used.has(entry.id)) return [];
+      used.add(entry.id);
+      return [{ label, text: item.body, author: item.author, url: item.url }];
+    });
+    return {
+      ...post,
+      body: xPost(main)?.body ?? post.body,
+      context: context.slice(0, 24),
+      contextPartial: !conversation?.status || Boolean(conversation.cursor?.bottom) || context.length > 24,
+    };
+  }));
 }
 
 async function searchReddit(q) {
   const subs = ["brasil", "brasilivre", "politics", "worldnews", "argentina", "portugal"];
-  const [arcticLists, brR, enR] = await Promise.all([
-    Promise.all(
-      subs.map(async (sub) => {
-        try {
-          const url = `https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=${sub}&title=${encodeURIComponent(q)}&limit=8&sort=desc`;
-          const res = await fetch(url, { headers: { "User-Agent": ATLAS_UA }, signal: AbortSignal.timeout(6000) });
-          if (!res.ok) return [];
-          const j = await res.json();
-          return (j.data ?? [])
-            .filter((p) => p.title && p.permalink && !p.removed_by_category)
-            .map((p) => ({
-              title: p.title.slice(0, 280),
-              subreddit: `r/${sub}`,
-              score: p.score ?? null,
-              comments: p.num_comments ?? null,
-              url: `https://www.reddit.com${p.permalink}`,
-              publishedAt: p.created_utc ? new Date(p.created_utc * 1000).toISOString() : null,
-            }));
-        } catch {
-          return [];
-        }
-      }),
-    ),
-    fetchGNewsRss(`site:reddit.com "${q}"`, "pt-BR", "BR", "BR:pt-419"),
-    fetchGNewsRss(`site:reddit.com "${q}"`, "en-US", "US", "US:en"),
-  ]);
+  const cutoff = Date.now() - 90 * DAY_MS;
+  const after = new Date(cutoff).toISOString().slice(0, 10);
+  const lists = await Promise.all(subs.map(async (subreddit) => {
+    const params = new URLSearchParams({ subreddit, title: q, after, limit: "8", sort: "desc" });
+    const result = await fetchJson(`${REDDIT}/posts/search?${params}`);
+    return result?.data ?? [];
+  }));
 
-  const seen = new Set();
-  const out = [];
-  for (const p of arcticLists.flat().sort((a, b) => (b.score ?? 0) - (a.score ?? 0))) {
-    if (seen.has(p.url)) continue;
-    seen.add(p.url);
-    out.push(p);
-  }
-  for (const it of [...brR, ...enR]) {
-    const key = it.title.toLowerCase().slice(0, 70);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      title: it.title,
-      subreddit: "Reddit",
-      score: null,
-      comments: null,
-      url: it.url,
-      publishedAt: it.publishedAt,
-    });
-    if (out.length >= 14) break;
-  }
-  return out.slice(0, 14);
+  const posts = lists.flat().filter((p) =>
+    p.title && p.permalink?.startsWith("/") && /^[a-z0-9]+$/.test(p.id) &&
+    !p.removed_by_category && p.created_utc * 1000 >= cutoff,
+  ).sort((a, b) => b.created_utc - a.created_utc).slice(0, 10);
+
+  return Promise.all(posts.map(async (p) => {
+    const url = `https://www.reddit.com${p.permalink}`;
+    const params = new URLSearchParams({ link_id: `t3_${p.id}`, limit: "50", sort: "asc" });
+    const result = await fetchJson(`${REDDIT}/comments/search?${params}`, 5000);
+    const comments = result?.data ?? [];
+    return {
+      title: p.title.slice(0, 280),
+      subreddit: `r/${p.subreddit}`,
+      score: p.score ?? null,
+      comments: p.num_comments ?? null,
+      url,
+      publishedAt: postDate(p.created_utc),
+      body: (p.selftext ?? "").slice(0, 3500),
+      context: comments.filter((c) => c.body && !/^\[(removed|deleted)\]$/i.test(c.body))
+        .slice(0, 24).map((c) => ({
+          label: c.parent_id?.startsWith("t1_") ? `Resposta ao coment?rio ${c.parent_id.slice(3)}` : "Coment?rio",
+          text: c.body.slice(0, 3500),
+          author: c.author ?? null,
+          url: `${url.replace(/\/$/, "")}/${c.id}/`,
+        })),
+      contextPartial: !result || comments.length >= 24 || (p.num_comments ?? 0) > comments.length,
+    };
+  }));
+}
+
+async function searchBackground(q) {
+  const subject = q.replaceAll('"', " ");
+  const sources = await Promise.all([
+    fetchGNewsRss(`"${subject}" ("pai" OR "fam?lia" OR "irm?os")`),
+    fetchGNewsRss(`"${subject}" ("igreja" OR "religi?o")`),
+  ]);
+  const editorial = /^felipe (?:campos )?sestaro$/i.test(subject) ? [{
+    title: "Quem ? Felipe Sestaro",
+    source: "Gazeta do Povo",
+    url: "https://www.gazetadopovo.com.br/vida-e-cidadania/apresentador-felipe-sestaro-ganha-projecao-com-embates-politicos-no-irontalks/",
+    publishedAt: null,
+    extract: "A reportagem relata que Felipe Sestaro atuou como mission?rio evang?lico da igreja Bola de Neve durante o per?odo em que viveu na R?ssia.",
+  }] : [];
+  return [...editorial, ...new Map(sources.flat().map((item) => [item.title, item])).values()].slice(0, 10);
 }
 
 async function searchWiki(q) {
@@ -288,12 +304,13 @@ export default async function handler(req, res) {
     return;
   }
 
-  const [youtube, x, reddit, news, wiki] = await Promise.all([
+  const [youtube, x, reddit, news, wiki, background] = await Promise.all([
     searchYouTube(q),
     searchX(q),
     searchReddit(q),
     searchNews(q),
     searchWiki(q),
+    searchBackground(q),
   ]);
 
   res.status(200).json({
@@ -304,5 +321,6 @@ export default async function handler(req, res) {
     reddit,
     news,
     wiki,
+    background,
   });
 }
