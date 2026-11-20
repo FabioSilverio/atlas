@@ -1,9 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const sans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500", "600"] });
-const mono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
+const sans = localFont({
+  src: "./fonts/plex-sans.woff2",
+  variable: "--font-plex-sans",
+  weight: "400 600",
+});
+const mono = localFont({
+  src: [
+    { path: "./fonts/plex-mono-400.woff2", weight: "400" },
+    { path: "./fonts/plex-mono-500.woff2", weight: "500" },
+  ],
+  variable: "--font-plex-mono",
+});
 
 export const metadata: Metadata = {
   title: { default: "ATLAS — ideias, pensadores e ideologias no poder", template: "%s · ATLAS" },
