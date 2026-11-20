@@ -29,12 +29,13 @@ function parseViewNum(text = "") {
   return Math.round(n);
 }
 
-async function searchYouTube(q) {
+async function searchYouTube(q, contextSearch = false) {
   // Fetch both most-viewed (CAMSAhAB) and most-relevant searches in parallel.
   const urls = [
     `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=CAMSAhAB`,
     `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`,
   ];
+  if (contextSearch) urls.shift();
   const seen = new Set();
   const out = [];
   await Promise.all(
@@ -85,7 +86,7 @@ async function searchYouTube(q) {
       } catch {}
     }),
   );
-  return out.sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 14);
+  return (contextSearch ? out : out.sort((a, b) => (b.views ?? 0) - (a.views ?? 0))).slice(0, 14);
 }
 
 async function fetchGNewsRss(query, hl = "pt-BR", gl = "BR", ceid = "BR:pt-419") {
@@ -245,6 +246,89 @@ async function searchReddit(q) {
   }));
 }
 
+function normalizeSearchText(value) {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
+async function readVideoEvidence(video, query) {
+  const source = {
+    title: video.title,
+    source: video.channel || "YouTube",
+    url: video.url,
+    publishedAt: null,
+  };
+  let extract = null;
+  try {
+    const response = await fetch(video.url, {
+      headers: { "User-Agent": UA, "Accept-Language": "pt-BR" },
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!response.ok) return source;
+    const html = await response.text();
+    const playerMatch = html.match(/(?:var )?ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\});/);
+    if (!playerMatch) return source;
+    const player = JSON.parse(playerMatch[1]);
+    const description = player.videoDetails?.shortDescription?.trim();
+    if (description) extract = `Descrição do canal: ${description.slice(0, 500)}`;
+    source.publishedAt = player.microformat?.playerMicroformatRenderer?.publishDate ?? null;
+    const tracks = player.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+    const track = tracks.find((item) => item.languageCode === "pt" && item.kind !== "asr")
+      ?? tracks.find((item) => item.languageCode?.startsWith("pt"))
+      ?? tracks[0];
+    if (!track?.baseUrl) return { ...source, extract };
+    const captionUrl = new URL(track.baseUrl);
+    if (captionUrl.origin !== "https://www.youtube.com" || captionUrl.pathname !== "/api/timedtext") {
+      return { ...source, extract };
+    }
+    captionUrl.searchParams.set("fmt", "json3");
+    const captionsResponse = await fetch(captionUrl, {
+      headers: { "User-Agent": UA },
+      redirect: "error",
+      signal: AbortSignal.timeout(3500),
+    });
+    if (!captionsResponse.ok) return { ...source, extract };
+    const captions = await captionsResponse.json();
+    const rows = (captions.events ?? []).flatMap((event) => {
+      const text = event.segs?.map((segment) => segment.utf8).join("").trim();
+      return text && Number.isFinite(event.tStartMs) ? [{ text, time: event.tStartMs }] : [];
+    });
+    const words = normalizeSearchText(query).match(/[a-z0-9]{3,}/g) ?? [];
+    const windows = rows.flatMap((row, index) => {
+      if (index % 5 !== 0) return [];
+      const text = rows.slice(index, index + 8).map((item) => item.text).join(" ");
+      const normalized = normalizeSearchText(text);
+      const matched = words.filter((word) => normalized.includes(word)).length;
+      const background = /\b(pai|irmaos?|familia|igreja|trajetoria|origem)\b/.test(normalized);
+      return [{ text, time: row.time, score: matched * 2 + Number(background) }];
+    });
+    const best = windows.sort((a, b) => b.score - a.score)[0];
+    if (!best?.score) return { ...source, extract };
+    const time = Math.floor(best.time / 1000);
+    return {
+      ...source,
+      url: `${source.url}&t=${time}s`,
+      extract: `Trecho da legenda${track.kind === "asr" ? " automática" : ""}, em ${time}s: ${best.text.slice(0, 550)}`,
+    };
+  } catch {
+    return { ...source, extract };
+  }
+}
+
+async function searchVideoBackground(q, mainVideos) {
+  const [documentary, interview, main] = await Promise.all([
+    searchYouTube(`${q} dossiê documentário`, true),
+    searchYouTube(`${q} entrevista história`, true),
+    mainVideos,
+  ]);
+  const selected = new Map();
+  for (const video of [documentary[0], interview[0], ...main, ...documentary, ...interview]) {
+    if (video && /^[\w-]{11}$/.test(video.id)) selected.set(video.id, video);
+    if (selected.size >= 3) break;
+  }
+  const sources = await Promise.all([...selected.values()].map((video) => readVideoEvidence(video, q)));
+  return sources.sort((a, b) => Number(Boolean(b.extract)) - Number(Boolean(a.extract)));
+}
+
 async function searchBackground(q) {
   const subject = q.replaceAll('"', " ");
   const sources = await Promise.all([
@@ -322,13 +406,15 @@ export default async function handler(req, res) {
     return;
   }
 
-  const [youtube, x, reddit, news, wiki, background] = await Promise.all([
-    searchYouTube(q),
+  const mainVideos = searchYouTube(q);
+  const [youtube, x, reddit, news, wiki, background, videos] = await Promise.all([
+    mainVideos,
     searchX(q),
     searchReddit(q),
     searchNews(q),
     searchWiki(q),
     searchBackground(q),
+    searchVideoBackground(q, mainVideos),
   ]);
 
   res.status(200).json({
@@ -339,6 +425,10 @@ export default async function handler(req, res) {
     reddit,
     news,
     wiki,
-    background,
+    background: [
+      ...background.filter((item) => item.extract),
+      ...videos,
+      ...background.filter((item) => !item.extract),
+    ],
   });
 }
