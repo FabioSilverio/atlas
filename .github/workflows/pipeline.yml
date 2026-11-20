@@ -79,9 +79,9 @@ jobs:
 
       - name: Coleta desta hora
         run: |
-          GROUPS="$(node scripts/schedule.mjs) ${{ inputs.jobs }}"
-          echo "grupos: $GROUPS"
-          npx tsx ingest/run.ts --keep-going $GROUPS
+          JOB_GROUPS="$(node scripts/schedule.mjs) ${{ inputs.jobs }}"
+          echo "grupos: $JOB_GROUPS"
+          npx tsx ingest/run.ts --keep-going $JOB_GROUPS
 
       - name: Cache do modelo local
         uses: actions/cache@v4
