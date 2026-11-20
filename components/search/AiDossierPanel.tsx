@@ -12,19 +12,12 @@ import {
   type LocalEngineMode,
 } from "@/lib/dossier-ai";
 
-const PLATFORM_TAG: Record<string, string> = {
-  news: "Notícia",
-  "x-voice": "X",
-  youtube: "YouTube",
-  reddit: "Reddit",
-  x: "Trend X",
-};
-
 const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
 
 /**
- * On-demand dossier builder powered by local AI (WebGPU Qwen 2.5 in the browser
- * or a local Ollama server), grounded in ATLAS's live signals + Wikipedia.
+ * Live internet research + on-demand local AI dossier panel.
+ * Scrapes YouTube, X, Reddit, Google News and Wikipedia for any query via /api/research,
+ * merges with ATLAS's own data, and synthesizes a dossier using local AI (WebGPU Qwen 2.5 or Ollama).
  */
 export function AiDossierPanel({ query, hits, autoStart = false }: { query: string; hits: Hit[]; autoStart?: boolean }) {
   const [mode, setMode] = useState<LocalEngineMode>("webgpu");
@@ -96,7 +89,6 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
     generateRef.current = generate;
   }, [generate]);
 
-  // Gather live evidence asynchronously (component remounts via key={query}).
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) return;
@@ -118,8 +110,8 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
   if (query.trim().length < 2) return null;
 
   const loadingEv = evidence === null;
-
   const busy = status === "loading_model" || status === "generating";
+  const totalLive = evidence ? evidence.youtube.length + evidence.x.length + evidence.reddit.length + evidence.news.length + evidence.wiki.length : 0;
 
   const copyMd = async () => {
     if (!output) return;
@@ -131,18 +123,18 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
   };
 
   return (
-    <section className="mt-6 border border-line-strong bg-panel p-5">
+    <section className="mt-6 border border-line-strong bg-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
-        <div>
+        <div className="min-w-0">
           <div className="label flex items-center gap-1.5 text-cyan">
-            <span className="inline-block size-2 rounded-full bg-cyan" /> Dossiê sob demanda · IA local
+            <span className={`inline-block size-2 rounded-full bg-cyan ${loadingEv || busy ? "live-dot" : ""}`} /> Pesquisa ao vivo na internet + Dossiê IA local
           </div>
-          <h2 className="mt-1 text-[20px] font-medium text-ink">“{query}”</h2>
+          <h2 className="mt-1 text-[22px] font-medium text-ink">“{query}”</h2>
           <p className="mt-1 text-[13px] text-muted">
             {loadingEv
-              ? "Coletando evidências (ATLAS, X, YouTube, Reddit, manchetes e Wikipédia)…"
+              ? "Buscando ao vivo no YouTube, X, Reddit, Google Notícias e Wikipédia…"
               : evidence
-                ? `${evidence.wiki.length} verbete(s) da Wikipédia · ${evidence.atlasHits.length} registro(s) no ATLAS · ${evidence.totalSignalsMatched} menção(ões) recentes em X, YouTube, Reddit e notícias.`
+                ? `${evidence.youtube.length} vídeos no YouTube · ${evidence.x.length} posts no X · ${evidence.reddit.length} tópicos no Reddit · ${evidence.news.length} notícias · ${evidence.wiki.length} Wikipédia`
                 : null}
           </p>
         </div>
@@ -172,7 +164,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
               onClick={() => generate()}
               className="border border-cyan bg-cyan/10 px-4 py-1.5 font-mono text-[12px] text-cyan transition-colors hover:bg-cyan/20 disabled:opacity-40"
             >
-              {output ? "↻ gerar novamente" : "✦ gerar dossiê com IA local"}
+              {output ? "↻ gerar dossiê novamente" : "✦ gerar dossiê com IA local"}
             </button>
           ) : (
             <button
@@ -186,7 +178,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
         </div>
       </div>
 
-      {/* Engine configuration row */}
+      {/* Engine settings */}
       <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[11.5px] text-muted">
         {mode === "webgpu" ? (
           <>
@@ -205,7 +197,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
                 ))}
               </select>
             </label>
-            <span>Roda 100% no seu navegador (GPU local, grátis, sem enviar dados a servidor).</span>
+            <span>Roda grátis na GPU local (Chrome/Edge).</span>
           </>
         ) : (
           <>
@@ -227,7 +219,7 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
                 className="w-32 border border-line-strong bg-bg px-2 py-1 text-ink focus:border-cyan-dim focus:outline-none"
               />
             </label>
-            <span>No PC: inicie o Ollama com OLLAMA_ORIGINS=*</span>
+            <span>Inicie com OLLAMA_ORIGINS=*</span>
           </>
         )}
       </div>
@@ -245,79 +237,144 @@ export function AiDossierPanel({ query, hits, autoStart = false }: { query: stri
         </div>
       )}
 
-      {/* Error box */}
-      {error && (
-        <div className="mt-4 border border-amber-dim bg-panel-2 px-3.5 py-2.5 text-[13px] text-amber">
-          {error}
-        </div>
-      )}
+      {error && <div className="mt-4 border border-amber-dim bg-panel-2 px-3.5 py-2.5 text-[13px] text-amber">{error}</div>}
 
-      {/* Generated dossier output */}
+      {/* AI Generated Dossier */}
       {output && (
-        <div className="mt-5 border border-line bg-panel-2 p-5">
+        <div className="mt-5 border border-cyan-dim/60 bg-panel-2 p-5">
           <div className="mb-3 flex items-center justify-between border-b border-line pb-2">
-            <span className="label text-cyan">
-              {status === "generating" ? "escrevendo dossiê…" : "dossiê gerado por IA local"}
-            </span>
+            <span className="label text-cyan">{status === "generating" ? "escrevendo dossiê…" : "dossiê gerado por IA local"}</span>
             <button type="button" onClick={copyMd} className="font-mono text-[11.5px] text-ink-2 hover:text-cyan">
               {copied ? "✓ copiado" : "copiar markdown"}
             </button>
           </div>
           <DossierMarkdown text={output} />
           <p className="mt-4 border-t border-line pt-2.5 font-mono text-[11px] text-muted">
-            Síntese gerada localmente ({mode === "webgpu" ? webModel : `Ollama ${ollamaModel}`}) a partir das fontes listadas abaixo. Confira os links originais antes de citar.
+            Síntese gerada localmente ({mode === "webgpu" ? webModel : `Ollama ${ollamaModel}`}) a partir da coleta ao vivo abaixo. Confira os links antes de citar.
           </p>
         </div>
       )}
 
-      {/* Live collected evidence (always visible, even before running AI) */}
-      {evidence && (evidence.wiki.length > 0 || evidence.signals.length > 0) && (
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      {/* Loading skeleton */}
+      {loadingEv && (
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="h-32 animate-pulse border border-line bg-panel-2" />
+          <div className="h-32 animate-pulse border border-line bg-panel-2" />
+        </div>
+      )}
+
+      {/* Live scraped evidence across all platforms */}
+      {evidence && totalLive > 0 && (
+        <div className="mt-6 space-y-6">
+          {/* Wikipedia */}
           {evidence.wiki.length > 0 && (
             <div>
-              <div className="label mb-2">Contexto enciclopédico (Wikipédia ao vivo)</div>
-              <ul className="space-y-2.5">
+              <div className="label mb-2">Wikipédia</div>
+              <div className="grid gap-2.5 md:grid-cols-2">
                 {evidence.wiki.map((w) => (
-                  <li key={w.url} className="border border-line bg-panel-2 p-3">
-                    <a href={w.url} target="_blank" rel="noreferrer" className="text-[14.5px] font-medium text-ink hover:text-cyan">
+                  <div key={w.url} className="border border-line bg-panel-2 p-3">
+                    <a href={w.url} target="_blank" rel="noreferrer" className="text-[15px] font-medium text-ink hover:text-cyan">
                       {w.title} <span className="font-mono text-[11px] text-muted">({w.lang.toUpperCase()}) ↗</span>
                     </a>
                     <p className="mt-1 line-clamp-4 text-[13.5px] leading-relaxed text-ink-2">{w.extract}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* YouTube */}
+          {evidence.youtube.length > 0 && (
+            <div>
+              <div className="label mb-2">YouTube — vídeos mais vistos e relevantes ({evidence.youtube.length})</div>
+              <ul className="grid gap-3 md:grid-cols-2">
+                {evidence.youtube.slice(0, 12).map((v) => (
+                  <li key={v.id} className="border border-line bg-panel-2 p-2.5">
+                    <a href={v.url} target="_blank" rel="noreferrer" className="group flex gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
+                        alt=""
+                        loading="lazy"
+                        className="h-[68px] w-[120px] shrink-0 bg-panel-3 object-cover transition-opacity group-hover:opacity-80"
+                      />
+                      <span className="min-w-0">
+                        <span className="line-clamp-2 text-[14px] leading-snug text-ink group-hover:text-cyan">{v.title}</span>
+                        <span className="mt-1 block truncate font-mono text-[11.5px] text-muted">
+                          {v.channel ?? "YouTube"}
+                          {v.views != null ? ` · ${compact.format(v.views)} views` : v.viewsText ? ` · ${v.viewsText}` : ""}
+                          {v.publishedText ? ` · ${v.publishedText}` : ""}
+                        </span>
+                      </span>
+                    </a>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {evidence.signals.length > 0 && (
-            <div>
-              <div className="label mb-2">
-                Menções recentes no monitor ({evidence.totalSignalsMatched} encontradas)
+          {/* X + Reddit + News */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {evidence.x.length > 0 && (
+              <div>
+                <div className="label mb-2">X — posts relevantes ({evidence.x.length})</div>
+                <ul className="space-y-2">
+                  {evidence.x.slice(0, 10).map((p) => (
+                    <li key={p.url + p.title.slice(0, 20)} className="border border-line bg-panel-2 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 font-mono text-[11px] text-muted">
+                        <span className="truncate text-ink-2">{p.author ?? "X"}</span>
+                        {p.engagement != null && <span className="shrink-0">{compact.format(p.engagement)} int.</span>}
+                      </div>
+                      <a href={p.url} target="_blank" rel="noreferrer" className="mt-1 line-clamp-3 block text-[13.5px] leading-snug text-ink hover:text-cyan">
+                        {p.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-1.5">
-                {evidence.signals.slice(0, 12).map((s) => (
-                  <li key={s.platform + s.url} className="border border-line bg-panel-2 px-3 py-2">
-                    <div className="flex items-center gap-2 font-mono text-[11px] text-muted">
-                      <span className="border border-line-strong px-1.5 py-0.5 text-ink-2">{PLATFORM_TAG[s.platform] ?? s.platform}</span>
-                      <span>{s.countryCode}</span>
-                      {s.author && <span className="truncate">{s.author}</span>}
-                      {s.metric != null && <span className="ml-auto shrink-0">{compact.format(s.metric)}</span>}
-                    </div>
-                    <a href={s.url} target="_blank" rel="noreferrer" className="mt-1 line-clamp-2 block text-[13.5px] leading-snug text-ink hover:text-cyan">
-                      {s.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            )}
+
+            {evidence.reddit.length > 0 && (
+              <div>
+                <div className="label mb-2">Reddit — discussões ({evidence.reddit.length})</div>
+                <ul className="space-y-2">
+                  {evidence.reddit.slice(0, 10).map((r) => (
+                    <li key={r.url + r.title.slice(0, 20)} className="border border-line bg-panel-2 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 font-mono text-[11px] text-muted">
+                        <span className="truncate text-ink-2">{r.subreddit}</span>
+                        {r.score != null && <span className="shrink-0">▲ {compact.format(r.score)}</span>}
+                      </div>
+                      <a href={r.url} target="_blank" rel="noreferrer" className="mt-1 line-clamp-2 block text-[13.5px] leading-snug text-ink hover:text-cyan">
+                        {r.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {evidence.news.length > 0 && (
+              <div>
+                <div className="label mb-2">Notícias e web ({evidence.news.length})</div>
+                <ul className="space-y-2">
+                  {evidence.news.slice(0, 10).map((n) => (
+                    <li key={n.url + n.title.slice(0, 20)} className="border border-line bg-panel-2 px-3 py-2">
+                      <a href={n.url} target="_blank" rel="noreferrer" className="line-clamp-2 block text-[13.5px] leading-snug text-ink hover:text-cyan">
+                        {n.title}
+                      </a>
+                      <div className="mt-1 font-mono text-[11px] text-muted">{n.source ?? "Web"}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>
   );
 }
 
-/** Lightweight safe Markdown renderer for headings, bullets, bold and paragraphs. */
 function DossierMarkdown({ text }: { text: string }) {
   const blocks = text.split(/\n{2,}/);
   return (

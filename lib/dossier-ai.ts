@@ -3,15 +3,39 @@
 import type { RecentSignalRow } from "@/app/data/recent.json/route";
 import { fold, type Hit } from "./search-client";
 
-export type EvidenceSignal = {
-  platform: string;
-  countryCode: string;
+export type LiveYouTube = {
+  id: string;
+  title: string;
+  channel: string | null;
+  views: number | null;
+  viewsText: string | null;
+  publishedText: string | null;
+  lengthText: string | null;
+  url: string;
+};
+
+export type LiveXPost = {
   title: string;
   author: string | null;
   url: string;
-  publishedAt: string;
-  metric: number | null;
-  econ: number | null;
+  engagement: number | null;
+  publishedAt: string | null;
+};
+
+export type LiveRedditPost = {
+  title: string;
+  subreddit: string;
+  score: number | null;
+  comments: number | null;
+  url: string;
+  publishedAt: string | null;
+};
+
+export type LiveNewsItem = {
+  title: string;
+  source: string | null;
+  url: string;
+  publishedAt: string | null;
 };
 
 export type WikiSnippet = {
@@ -23,10 +47,14 @@ export type WikiSnippet = {
 
 export type DossierEvidence = {
   query: string;
+  fetchedAt: string;
+  liveOk: boolean;
   wiki: WikiSnippet[];
   atlasHits: Hit[];
-  signals: EvidenceSignal[];
-  totalSignalsMatched: number;
+  youtube: LiveYouTube[];
+  x: LiveXPost[];
+  reddit: LiveRedditPost[];
+  news: LiveNewsItem[];
 };
 
 export type LocalEngineMode = "webgpu" | "ollama";
@@ -36,13 +64,23 @@ export const WEBGPU_MODELS = [
   { id: "Qwen2.5-3B-Instruct-q4f16_1-MLC", label: "Qwen 2.5 3B (mais detalhado · ~1,9 GB)" },
 ] as const;
 
-let recentCache: Promise<EvidenceSignal[]> | null = null;
+type RecentSignal = {
+  platform: string;
+  countryCode: string;
+  title: string;
+  author: string | null;
+  url: string;
+  publishedAt: string;
+  metric: number | null;
+};
 
-function loadRecentSignals(): Promise<EvidenceSignal[]> {
+let recentCache: Promise<RecentSignal[]> | null = null;
+
+function loadRecentSignals(): Promise<RecentSignal[]> {
   recentCache ??= fetch("/data/recent.json")
     .then((r) => (r.ok ? r.json() : { rows: [] }))
     .then((j: { rows?: RecentSignalRow[] }) =>
-      (j.rows ?? []).map(([platform, countryCode, title, author, url, publishedAt, metric, econ]) => ({
+      (j.rows ?? []).map(([platform, countryCode, title, author, url, publishedAt, metric]) => ({
         platform,
         countryCode,
         title,
@@ -50,7 +88,6 @@ function loadRecentSignals(): Promise<EvidenceSignal[]> {
         url,
         publishedAt,
         metric,
-        econ,
       })),
     )
     .catch(() => {
@@ -60,17 +97,39 @@ function loadRecentSignals(): Promise<EvidenceSignal[]> {
   return recentCache;
 }
 
-async function fetchWiki(lang: "pt" | "en", query: string): Promise<WikiSnippet[]> {
+type LiveApiResponse = {
+  fetchedAt?: string;
+  youtube?: LiveYouTube[];
+  x?: LiveXPost[];
+  reddit?: LiveRedditPost[];
+  news?: LiveNewsItem[];
+  wiki?: WikiSnippet[];
+};
+
+async function fetchLiveWeb(query: string): Promise<LiveApiResponse | null> {
   try {
-    const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=2&format=json&origin=*`;
-    const sr = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
+    const r = await fetch(`/api/research?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return null;
+    return (await r.json()) as LiveApiResponse;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWikiDirect(lang: "pt" | "en", query: string): Promise<WikiSnippet[]> {
+  try {
+    const sr = await fetch(
+      `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=2&format=json&origin=*`,
+      { signal: AbortSignal.timeout(6000) },
+    );
     if (!sr.ok) return [];
     const sj = (await sr.json()) as { query?: { search?: { title: string }[] } };
     const titles = (sj.query?.search ?? []).map((x) => x.title);
     if (!titles.length) return [];
-
-    const extUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts|info&exintro=1&explaintext=1&inprop=url&titles=${encodeURIComponent(titles.join("|"))}&format=json&origin=*`;
-    const er = await fetch(extUrl, { signal: AbortSignal.timeout(8000) });
+    const er = await fetch(
+      `https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts|info&exintro=1&explaintext=1&inprop=url&titles=${encodeURIComponent(titles.join("|"))}&format=json&origin=*`,
+      { signal: AbortSignal.timeout(6000) },
+    );
     if (!er.ok) return [];
     const ej = (await er.json()) as { query?: { pages?: Record<string, { title?: string; extract?: string; fullurl?: string }> } };
     return Object.values(ej.query?.pages ?? {})
@@ -86,118 +145,173 @@ async function fetchWiki(lang: "pt" | "en", query: string): Promise<WikiSnippet[
   }
 }
 
-/** Gathers real cited evidence from ATLAS's live signal index + Wikipedia (PT & EN). */
+function ytId(url: string): string | null {
+  return url.match(/[?&]v=([\w-]{11})/)?.[1] ?? url.match(/youtu\.be\/([\w-]{11})/)?.[1] ?? null;
+}
+
+/**
+ * Gathers live evidence from the internet (/api/research scraping YouTube, X, Reddit, News, Wikipedia)
+ * combined with ATLAS's own monitored signals (/data/recent.json) and database index.
+ */
 export async function gatherDossierEvidence(query: string, atlasHits: Hit[]): Promise<DossierEvidence> {
   const words = fold(query)
     .split(" ")
     .filter((w) => w.length >= 2)
     .slice(0, 6);
 
-  const [allSignals, ptWiki, enWiki] = await Promise.all([
-    loadRecentSignals(),
-    fetchWiki("pt", query),
-    fetchWiki("en", query),
-  ]);
+  const [live, allRecent] = await Promise.all([fetchLiveWeb(query), loadRecentSignals()]);
 
-  const matched = words.length
-    ? allSignals.filter((s) => {
+  const matchedRecent = words.length
+    ? allRecent.filter((s) => {
         const hay = fold(`${s.title} ${s.author ?? ""}`);
         return words.every((w) => hay.includes(w));
       })
     : [];
 
-  // Keep a balanced, high-signal selection across platforms.
-  const pick = (platform: string, max: number) =>
-    matched
-      .filter((s) => s.platform === platform)
-      .sort((a, b) => (b.metric ?? 0) - (a.metric ?? 0) || b.publishedAt.localeCompare(a.publishedAt))
-      .slice(0, max);
+  // Merge ATLAS monitored signals with live internet scrape (deduped by URL).
+  const ytSeen = new Set<string>();
+  const youtube: LiveYouTube[] = [];
+  for (const v of live?.youtube ?? []) {
+    if (ytSeen.has(v.id)) continue;
+    ytSeen.add(v.id);
+    youtube.push(v);
+  }
+  for (const s of matchedRecent.filter((x) => x.platform === "youtube")) {
+    const id = ytId(s.url);
+    if (!id || ytSeen.has(id)) continue;
+    ytSeen.add(id);
+    youtube.push({ id, title: s.title, channel: s.author, views: s.metric, viewsText: null, publishedText: null, lengthText: null, url: s.url });
+  }
+  youtube.sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
 
-  const signals = [
-    ...pick("news", 8),
-    ...pick("x-voice", 10),
-    ...pick("youtube", 8),
-    ...pick("reddit", 6),
-    ...pick("x", 5),
-  ];
+  const xSeen = new Set<string>();
+  const x: LiveXPost[] = [];
+  for (const s of matchedRecent.filter((r) => r.platform === "x-voice" || r.platform === "x").sort((a, b) => (b.metric ?? 0) - (a.metric ?? 0))) {
+    if (xSeen.has(s.url)) continue;
+    xSeen.add(s.url);
+    x.push({ title: s.title, author: s.author, url: s.url, engagement: s.metric, publishedAt: s.publishedAt });
+  }
+  for (const p of live?.x ?? []) {
+    const k = p.title.toLowerCase().slice(0, 65);
+    if (xSeen.has(p.url) || xSeen.has(k)) continue;
+    xSeen.add(p.url);
+    xSeen.add(k);
+    x.push(p);
+  }
 
-  // Prefer PT Wikipedia; include EN if PT returned fewer than 2 entries.
-  const wiki = [...ptWiki, ...(ptWiki.length < 2 ? enWiki : enWiki.slice(0, 1))].slice(0, 3);
+  const rSeen = new Set<string>();
+  const reddit: LiveRedditPost[] = [];
+  for (const s of matchedRecent.filter((r) => r.platform === "reddit").sort((a, b) => (b.metric ?? 0) - (a.metric ?? 0))) {
+    if (rSeen.has(s.url)) continue;
+    rSeen.add(s.url);
+    reddit.push({ title: s.title, subreddit: s.author ?? "Reddit", score: s.metric, comments: null, url: s.url, publishedAt: s.publishedAt });
+  }
+  for (const p of live?.reddit ?? []) {
+    const k = p.title.toLowerCase().slice(0, 65);
+    if (rSeen.has(p.url) || rSeen.has(k)) continue;
+    rSeen.add(p.url);
+    rSeen.add(k);
+    reddit.push(p);
+  }
+
+  const nSeen = new Set<string>();
+  const news: LiveNewsItem[] = [];
+  for (const it of live?.news ?? []) {
+    const k = it.title.toLowerCase().slice(0, 65);
+    if (nSeen.has(k)) continue;
+    nSeen.add(k);
+    news.push(it);
+  }
+  for (const s of matchedRecent.filter((r) => r.platform === "news")) {
+    const k = s.title.toLowerCase().slice(0, 65);
+    if (nSeen.has(k)) continue;
+    nSeen.add(k);
+    news.push({ title: s.title, source: s.author, url: s.url, publishedAt: s.publishedAt });
+  }
+
+  let wiki = live?.wiki ?? [];
+  if (!wiki.length && !live) {
+    const [pt, en] = await Promise.all([fetchWikiDirect("pt", query), fetchWikiDirect("en", query)]);
+    wiki = [...pt, ...(pt.length < 2 ? en : en.slice(0, 1))].slice(0, 3);
+  }
 
   return {
     query,
+    fetchedAt: live?.fetchedAt ?? new Date().toISOString(),
+    liveOk: Boolean(live),
     wiki,
     atlasHits: atlasHits.slice(0, 16),
-    signals,
-    totalSignalsMatched: matched.length,
+    youtube: youtube.slice(0, 16),
+    x: x.slice(0, 16),
+    reddit: reddit.slice(0, 14),
+    news: news.slice(0, 16),
   };
 }
-
-const PLATFORM_LABEL: Record<string, string> = {
-  news: "Notícia",
-  "x-voice": "X (voz monitorada)",
-  youtube: "YouTube",
-  reddit: "Reddit",
-  x: "Tendência X",
-};
 
 export function buildDossierMessages(ev: DossierEvidence): { role: "system" | "user"; content: string }[] {
   const lines: string[] = [];
 
   if (ev.wiki.length) {
-    lines.push("## CONTEXTO ENCICLOPÉDICO (WIKIPÉDIA)");
-    for (const w of ev.wiki) {
-      lines.push(`### ${w.title} (${w.lang.toUpperCase()}) — ${w.url}\n${w.extract}`);
-    }
+    lines.push("## WIKIPÉDIA");
+    for (const w of ev.wiki) lines.push(`### ${w.title} (${w.lang.toUpperCase()})\n${w.extract}`);
   }
-
   if (ev.atlasHits.length) {
-    lines.push("## REGISTROS NO BANCO DO ATLAS");
-    for (const h of ev.atlasHits.slice(0, 12)) {
-      lines.push(`- [${h.kind}] ${h.title}${h.subtitle ? ` — ${h.subtitle}` : ""}${h.countryCode ? ` (${h.countryCode})` : ""}`);
+    lines.push("## BANCO DO ATLAS");
+    for (const h of ev.atlasHits.slice(0, 10)) {
+      lines.push(`- [${h.kind}] ${h.title}${h.subtitle ? ` — ${h.subtitle}` : ""}`);
     }
   }
-
-  if (ev.signals.length) {
-    lines.push(`## MONITORAMENTO AO VIVO DO ATLAS (${ev.totalSignalsMatched} menções recentes; amostra principal abaixo)`);
-    for (const s of ev.signals.slice(0, 22)) {
-      const m = s.metric != null ? ` · métrica: ${s.metric}` : "";
-      lines.push(`- [${PLATFORM_LABEL[s.platform] ?? s.platform} · ${s.countryCode}${m}] ${s.author ? `${s.author}: ` : ""}${s.title}`);
+  if (ev.news.length) {
+    lines.push("## NOTÍCIAS RECENTES");
+    for (const n of ev.news.slice(0, 12)) lines.push(`- [${n.source ?? "Imprensa"}] ${n.title}`);
+  }
+  if (ev.youtube.length) {
+    lines.push("## VÍDEOS MAIS VISTOS / RELEVANTES NO YOUTUBE");
+    for (const v of ev.youtube.slice(0, 10)) {
+      const vw = v.viewsText ?? (v.views != null ? `${v.views.toLocaleString("pt-BR")} views` : "");
+      lines.push(`- [${v.channel ?? "YouTube"}${vw ? ` · ${vw}` : ""}] ${v.title}`);
     }
+  }
+  if (ev.x.length) {
+    lines.push("## POSTS RELEVANTES NO X");
+    for (const p of ev.x.slice(0, 10)) lines.push(`- [${p.author ?? "X"}] ${p.title}`);
+  }
+  if (ev.reddit.length) {
+    lines.push("## DISCUSSÕES NO REDDIT");
+    for (const r of ev.reddit.slice(0, 8)) lines.push(`- [${r.subreddit}${r.score != null ? ` · ▲${r.score}` : ""}] ${r.title}`);
   }
 
   const contextBlock = lines.length
     ? lines.join("\n")
-    : "Nenhuma menção recente encontrada no índice do ATLAS ou na Wikipédia para este termo. Se tiver conhecimento geral seguro, contextualize brevemente deixando claro que não houve coleta recente no ATLAS.";
+    : "Nenhuma fonte retornada na coleta ao vivo para este termo.";
 
   return [
     {
       role: "system",
       content:
         "Você é um analista editorial do painel ATLAS (jornalismo de dados e inteligência política). " +
-        "Escreva um dossiê objetivo, claro e bem estruturado em português do Brasil usando EXCLUSIVAMENTE as fontes fornecidas abaixo. " +
-        "Regras rígidas: (1) nunca invente fatos, números ou citações que não estejam nas fontes; " +
-        "(2) não rotule a ideologia de ninguém por conta própria — só mencione posições registradas nas fontes; " +
-        "(3) quando não houver dados sobre algum ponto, diga explicitamente que não consta nas fontes coletadas; " +
-        "(4) use títulos Markdown (##) curtos e listas diretas, fáceis de escanear.",
+        "Escreva um dossiê objetivo, claro e bem estruturado em português do Brasil usando EXCLUSIVAMENTE as fontes coletadas da internet (YouTube, X, Reddit, notícias, Wikipédia e banco ATLAS) listadas abaixo. " +
+        "Regras rígidas: (1) nunca invente fatos, números ou citações ausentes das fontes; " +
+        "(2) não atribua rótulo ideológico por conta própria — apenas descreva o que as fontes mostram; " +
+        "(3) cite os episódios, canais, veículos e polêmicas concretos que aparecem nas manchetes, vídeos e posts; " +
+        "(4) use títulos Markdown (##) curtos e listas diretas.",
     },
     {
       role: "user",
       content:
-        `Monte um dossiê sobre: "${ev.query}"\n\n` +
+        `Monte um dossiê completo sobre: "${ev.query}"\n\n` +
         "Estruture nestas seções:\n" +
         "## Resumo executivo\n" +
-        "## Contexto e histórico\n" +
-        "## O que está sendo debatido agora\n" +
-        "## Pontos de tensão e argumentos em disputa\n" +
+        "## Quem é / contexto\n" +
+        "## O que está repercutindo no YouTube, X, Reddit e imprensa\n" +
+        "## Principais debates, polêmicas e argumentos\n" +
         "## Pontos a acompanhar\n\n" +
-        "FONTES COLETADAS:\n" +
+        "FONTES COLETADAS AO VIVO:\n" +
         contextBlock,
     },
   ];
 }
 
-// Reuse the loaded WebLLM engine across queries in the same browser session.
 type WebLLMEngine = {
   chat: {
     completions: {
@@ -227,11 +341,11 @@ export async function streamWebGPUDossier(opts: {
   signal: AbortSignal;
 }) {
   if (!hasWebGPU()) {
-    throw new Error("Seu navegador não expõe WebGPU. Use Chrome/Edge atualizado ou mude para Ollama local.");
+    throw new Error("Este dispositivo/navegador não suporta WebGPU para rodar o modelo local. As fontes ao vivo do YouTube, X, Reddit e notícias já estão listadas abaixo — ou use no Chrome/Edge no computador ou via Ollama local.");
   }
   const webllm = await import("@mlc-ai/web-llm");
   if (!cachedEngine || cachedModelId !== opts.modelId) {
-    opts.onProgress(0.01, "Preparando modelo local no navegador (fica em cache após o 1º uso)…");
+    opts.onProgress(0.01, "Preparando Qwen 2.5 local no navegador (fica em cache após o 1º uso)…");
     const eng = (await webllm.CreateMLCEngine(opts.modelId, {
       initProgressCallback: (p) => opts.onProgress(p.progress ?? 0, p.text ?? "Carregando modelo…"),
     })) as unknown as WebLLMEngine;
@@ -245,7 +359,7 @@ export async function streamWebGPUDossier(opts: {
     const stream = await cachedEngine.chat.completions.create({
       messages: buildDossierMessages(opts.evidence),
       temperature: 0.25,
-      max_tokens: 1400,
+      max_tokens: 1500,
       stream: true,
     });
     for await (const part of stream) {
