@@ -47,7 +47,8 @@ next-env.d.ts
 /data/cache/
 
 # local tooling
-/.claude/
+/.claude/*
+!/.claude/skills/
 
 .vercel
 .env*
